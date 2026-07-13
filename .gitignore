@@ -7,10 +7,21 @@
 
 # JavaScript / Vercel
 node_modules/
+.expo/
 .next/
 .vercel/
 dist/
 coverage/
+test-results/
+playwright-report/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+*.egg-info/
 
 # Flutter / Dart
 .dart_tool/

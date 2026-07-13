@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.*
+node_modules
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+activity-social-app-product/prototype/screens
+activity-social-app-product/prototype/contact-sheets

@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "搭场",
+    "slug": "dachang",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.dachang.app"
+    },
+    "android": {
+      "package": "com.dachang.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A84FF"
+      }
+    }
+  }
+}

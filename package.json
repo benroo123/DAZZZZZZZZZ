@@ -1,0 +1,31 @@
+{
+  "name": "dachang-platform",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/mobile",
+    "services/api-ts",
+    "tests/e2e"
+  ],
+  "scripts": {
+    "infra:up": "docker compose up -d --wait postgres redis rabbitmq minio",
+    "infra:down": "docker compose down",
+    "infra:reset": "docker compose down -v && docker compose up -d --wait postgres redis rabbitmq minio",
+    "dev:ts": "npm --workspace @dachang/api-ts run dev",
+    "worker:ts": "npm --workspace @dachang/api-ts run worker:dev",
+    "dev:mobile": "npm --workspace @dachang/mobile run web",
+    "start:mobile": "npm --workspace @dachang/mobile start",
+    "build:ts": "npm --workspace @dachang/api-ts run build",
+    "build:mobile:android": "npm --workspace @dachang/mobile exec -- expo export --platform android --output-dir /tmp/dachang-expo-android",
+    "test:ts": "npm --workspace @dachang/api-ts test",
+    "test:mobile": "npm --workspace @dachang/mobile test",
+    "test:unit": "npm run test:ts && npm run test:mobile",
+    "test:python": "services/api-python/.venv/bin/ruff check services/api-python && services/api-python/.venv/bin/pytest services/api-python/tests",
+    "test:e2e": "npm --workspace @dachang/e2e test",
+    "test:all": "npm run typecheck && npm run test:unit && npm run test:python && npm run build:ts && npm run build:mobile:android && npm run test:e2e",
+    "typecheck": "npm --workspace @dachang/api-ts run typecheck && npm --workspace @dachang/mobile run typecheck"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
