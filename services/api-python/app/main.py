@@ -4,10 +4,11 @@ from contextlib import asynccontextmanager
 from typing import Any, Annotated
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
+from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .auth import authenticated_user
 from .config import settings
 from .infra import infra
 from .models import (
@@ -69,12 +70,6 @@ async def request_context(request: Request, call_next):
         flush=True,
     )
     return response
-
-
-def authenticated_user(authorization: Annotated[str | None, Header()] = None) -> str:
-    if authorization != f"Bearer {settings.auth_token}":
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Use Authorization: Bearer demo-user")
-    return settings.demo_user_id
 
 
 UserId = Annotated[str, Depends(authenticated_user)]

@@ -62,7 +62,7 @@ npm run infra:down
 
 ## 环境变量
 
-OrbStack 会把 machine 内监听的端口自动转发到 macOS 的 `127.0.0.1`。根目录启动脚本会自动注入标准端口变量，并在存在 `.env` 时先加载它；需要连接远端模型或替换基础设施时，可复制 `.env.example` 后修改。主要变量：
+OrbStack 会把 machine 内监听的端口自动转发到 macOS 的 `127.0.0.1`。根目录启动脚本会自动注入标准端口变量，并依次加载存在的 `.env`、`.env.local`；需要连接远端模型或替换基础设施时，可复制 `.env.example` 后修改。主要变量：
 
 - `DATABASE_URL`
 - `REDIS_URL`
@@ -70,6 +70,10 @@ OrbStack 会把 machine 内监听的端口自动转发到 macOS 的 `127.0.0.1`�
 - `S3_ENDPOINT / S3_PORT / S3_ACCESS_KEY / S3_SECRET_KEY / S3_BUCKET`
 - `MODEL_PROVIDER / MODEL_BASE_URL / MODEL_API_KEY / MODEL_NAME`
 - `EXPO_PUBLIC_API_BASE_URL`
+- `AUTH_MODE / SUPABASE_URL / SUPABASE_JWKS_URL / SUPABASE_JWT_AUDIENCE`
+- `EXPO_PUBLIC_AUTH_MODE / EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+`AUTH_MODE=hybrid` 适合联调：没有 Supabase Session 时移动端继续使用演示 Token，有 Session 后自动把 access token 交给业务 API。生产环境必须使用 `AUTH_MODE=supabase`。Publishable key 可以进入 App，secret key 和数据库密码不可以。
 
 `MODEL_BASE_URL` 为空时使用确定性的本地模型适配器，保证离线开发和 CI 可重复。配置后会调用 OpenAI-compatible `/chat/completions`，业务层不依赖具体模型厂商。
 

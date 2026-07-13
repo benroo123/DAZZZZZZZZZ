@@ -1,3 +1,5 @@
+import { getAccessToken } from './supabase';
+
 export const API_BASE_URL = (
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3100/v1'
 ).replace(/\/$/, '');
@@ -69,10 +71,14 @@ type RequestOptions = RequestInit & { idempotencyKey?: string };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { idempotencyKey, ...init } = options;
+  const accessToken = await getAccessToken();
+  const authMode = process.env.EXPO_PUBLIC_AUTH_MODE ?? 'demo';
+  const token = accessToken ?? (authMode !== 'supabase' ? 'demo-user' : null);
+  if (!token) throw new Error('请先登录后再继续');
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      Authorization: 'Bearer demo-user',
+      Authorization: `Bearer ${token}`,
       ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
       ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
       ...(init.headers ?? {}),

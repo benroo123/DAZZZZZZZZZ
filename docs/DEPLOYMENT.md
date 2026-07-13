@@ -4,7 +4,7 @@
 
 - **Expo / EAS**：构建和发布 iOS、Android App。
 - **Vercel**：品牌官网、运营后台、管理控制台。长连接 API 和持续消费 MQ 的 Worker 不放进短生命周期 Serverless Function。
-- **Supabase**：托管 PostgreSQL/PostGIS，后续接 Supabase Auth；对象存储通过当前 S3 适配层替换 MinIO。
+- **Supabase**：托管 PostgreSQL/PostGIS 和 Auth；对象存储通过当前 S3 适配层替换 MinIO。
 - **Kubernetes 或托管应用平台**：运行无状态 API Pod 和独立 Worker Pod；使用 Buildpacks/Nixpacks 从源码生成 OCI 交付物，不维护手写镜像构建文件。
 - **托管 Redis / RabbitMQ**：缓存、限流、实时状态、异步任务和死信处理。
 
@@ -45,9 +45,9 @@ flowchart TB
 
 ## Supabase 迁移顺序
 
-1. 在 Supabase 数据库启用 `pgcrypto` 与 `postgis`，运行 schema 和 runtime migration。
-2. 把 `DATABASE_URL` 指向 Supabase 的连接池地址；事务型 Worker 优先使用 session mode 或直连地址。
-3. 新增 Supabase JWT/JWKS 鉴权适配器，把 `auth.users.id` 映射到 `app.user_identities`，不要直接让客户端写业务 schema。
+1. 将完整的 `SUPABASE_DATABASE_URL` 放入未跟踪的 `.env.local`，运行 `npm run supabase:migrate`；脚本会启用 `pgcrypto`、`postgis`，安装 schema、runtime migration 和 Auth bridge。
+2. 持久 API/Worker 优先使用直连或 Supavisor session mode；Vercel/Serverless 使用 transaction mode，并关闭 prepared statements。直连端点默认只有 IPv6。
+3. 将 API/Worker 设置为 `AUTH_MODE=supabase`，配置 `SUPABASE_URL`、`SUPABASE_JWKS_URL` 和 audience；JWT 的 `sub` 由触发器映射到 `app.users`、`app.profiles`、`app.user_identities`。客户端不能直接写业务 schema。
 4. 将 MinIO 客户端替换为同一 `ObjectStorage` 接口下的 Supabase Storage/S3 实现，并保留隔离区、审核状态和短期签名 URL。
 5. 用 Row Level Security 作为纵深防御；主要授权仍在 API 层完成，Agent 调用使用短期、细粒度委托凭证。
 

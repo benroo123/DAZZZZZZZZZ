@@ -12,6 +12,7 @@
 - 资料：照片入口、年龄和匹配资料、资料完整度、到场率、信用评分。
 - 八套完整主题：清透蓝、极光青、日出橙、午夜红、电光撞色、钴蓝波普、森林米白、黑灰冰蓝。
 - 两套等价后端：NestJS + TypeScript（推荐主版本）和 FastAPI + Python（模型/数据团队友好版本）。
+- Supabase SDK 与 Auth：Expo 会话持久化、两套后端的 JWT/JWKS 验证，以及 `auth.users` 到业务用户的自动桥接。
 - OrbStack 原生 Linux 服务：PostgreSQL/PostGIS、Redis、RabbitMQ、MinIO，以及 Transactional Outbox、重试队列、死信队列、幂等键和 Agent 工具协议。
 
 ## 目录
@@ -22,6 +23,7 @@
 | `services/api-ts` | 推荐主后端和异步 Worker |
 | `services/api-python` | Python 等价 API 和异步 Worker |
 | `infra/db` | 运行时迁移与演示种子数据 |
+| `infra/supabase` | Supabase Auth 用户与业务 schema 的桥接迁移 |
 | `scripts/orbstack` | 创建 OrbStack Ubuntu machine，并以 systemd 管理全部基础设施 |
 | `packages/contracts` | 两端共享的接口说明与八套主题 Token |
 | `tests/e2e` | 两套 API、MQ、对象存储和五页签端到端测试 |
@@ -70,6 +72,21 @@ npm run dev:mobile
 ```bash
 EXPO_PUBLIC_API_BASE_URL=http://你的电脑局域网IP:3100/v1 npm --workspace @dachang/mobile start
 ```
+
+## Supabase 接入
+
+Expo 使用 `EXPO_PUBLIC_SUPABASE_URL` 和 `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`；这两项会进入客户端 Bundle。`SUPABASE_SECRET_KEY` 和数据库密码只能放在服务端密钥管理中，不能使用 `EXPO_PUBLIC_` 前缀，也不能提交到 Git。
+
+两套后端支持三种 `AUTH_MODE`：`demo` 仅供本地测试，`hybrid` 同时接受本地演示 Token 和 Supabase JWT，`supabase` 用于生产。后端通过 `SUPABASE_JWKS_URL` 验证 JWT，并将 `sub` 作为业务用户 ID。
+
+把完整且已转义的云数据库连接串写入未跟踪的根目录 `.env.local` 后，可从 OrbStack machine 执行迁移：
+
+```bash
+SUPABASE_DATABASE_URL=postgresql://... # 写入 .env.local，不要直接提交
+npm run supabase:migrate
+```
+
+迁移会安装业务 schema 和 `auth.users` 触发器，不会默认写入演示数据；如需临时测试数据，显式设置 `SUPABASE_SEED_DEMO=true`。
 
 ## 验证
 

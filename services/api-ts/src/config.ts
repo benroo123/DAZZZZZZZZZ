@@ -6,6 +6,14 @@ function integer(name: string, fallback: number): number {
   return value;
 }
 
+function authMode(): 'demo' | 'hybrid' | 'supabase' {
+  const value = process.env.AUTH_MODE ?? 'demo';
+  if (value !== 'demo' && value !== 'hybrid' && value !== 'supabase') {
+    throw new Error('AUTH_MODE must be demo, hybrid, or supabase');
+  }
+  return value;
+}
+
 export const config = {
   implementation: 'ts' as const,
   port: integer('TS_API_PORT', 3100),
@@ -23,6 +31,12 @@ export const config = {
   },
   authToken: process.env.DEMO_AUTH_TOKEN ?? 'demo-user',
   demoUserId: '11111111-1111-4111-8111-111111111111',
+  auth: {
+    mode: authMode(),
+    supabaseUrl: (process.env.SUPABASE_URL ?? '').replace(/\/$/, ''),
+    jwksUrl: process.env.SUPABASE_JWKS_URL ?? '',
+    audience: process.env.SUPABASE_JWT_AUDIENCE ?? 'authenticated',
+  },
   model: {
     provider: process.env.MODEL_PROVIDER ?? 'local-deterministic',
     baseUrl: process.env.MODEL_BASE_URL ?? '',

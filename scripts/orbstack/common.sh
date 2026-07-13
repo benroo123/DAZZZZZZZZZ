@@ -2,11 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-if [[ -f "${ROOT_DIR}/.env" ]]; then
-  set -a
-  source "${ROOT_DIR}/.env"
-  set +a
-fi
+for env_file in "${ROOT_DIR}/.env" "${ROOT_DIR}/.env.local"; do
+  if [[ -f "${env_file}" ]]; then
+    set -a
+    source "${env_file}"
+    set +a
+  fi
+done
 ORBSTACK_MACHINE="${ORBSTACK_MACHINE:-dachang-dev}"
 ORBSTACK_HOST="${ORBSTACK_HOST:-127.0.0.1}"
 VM_ROOT="/mnt/mac${ROOT_DIR}"
