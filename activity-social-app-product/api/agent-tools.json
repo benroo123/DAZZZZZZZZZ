@@ -1,0 +1,278 @@
+{
+  "schema_version": "1.0",
+  "product": "dachang",
+  "principles": {
+    "default_mode": "dry_run_for_mutations",
+    "idempotency_required": true,
+    "exact_location_available_to_agents": false,
+    "human_approval_header": "X-Approval-Token",
+    "audit_required": true
+  },
+  "tools": [
+    {
+      "name": "search_entities",
+      "operation_id": "searchEntities",
+      "description": "Search activities, places, posts and public user profiles.",
+      "risk": "low",
+      "approval": "never",
+      "required_scope": "discovery:read",
+      "input_schema": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "types": { "type": "array", "items": { "enum": ["activity", "place", "post", "user"] }, "maxItems": 4 },
+          "city_code": { "type": "string", "maxLength": 20 },
+          "cursor": { "type": "string" },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 20, "default": 10 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "filter_activities",
+      "operation_id": "listNearbyActivities",
+      "description": "Find activities by type, coarse place, distance, time and participant count.",
+      "risk": "low",
+      "approval": "never",
+      "required_scope": "activity:read",
+      "input_schema": {
+        "type": "object",
+        "required": ["city_code"],
+        "properties": {
+          "city_code": { "type": "string", "maxLength": 20 },
+          "district_code": { "type": "string", "maxLength": 20 },
+          "categories": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },
+          "radius_km": { "type": "number", "minimum": 1, "maximum": 100, "default": 5 },
+          "starts_after": { "type": "string", "format": "date-time" },
+          "starts_before": { "type": "string", "format": "date-time" },
+          "participant_min": { "type": "integer", "minimum": 2, "maximum": 50 },
+          "participant_max": { "type": "integer", "minimum": 2, "maximum": 50 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "draft_activity",
+      "operation_id": "createActivity",
+      "description": "Create an unpublished activity draft; at least one approved or AI-confirmed image is required.",
+      "risk": "medium",
+      "approval": "never_for_draft",
+      "required_scope": "activity:draft",
+      "input_schema": {
+        "type": "object",
+        "required": ["title", "description", "category", "media_ids", "starts_at", "ends_at", "city_code", "min_participants", "max_participants", "join_policy"],
+        "properties": {
+          "title": { "type": "string", "minLength": 4, "maxLength": 120 },
+          "description": { "type": "string", "minLength": 10, "maxLength": 5000 },
+          "category": { "type": "string", "maxLength": 60 },
+          "media_ids": { "type": "array", "minItems": 1, "maxItems": 9, "items": { "type": "string", "format": "uuid" } },
+          "starts_at": { "type": "string", "format": "date-time" },
+          "ends_at": { "type": "string", "format": "date-time" },
+          "city_code": { "type": "string", "maxLength": 20 },
+          "district_code": { "type": "string", "maxLength": 20 },
+          "venue_name": { "type": "string", "maxLength": 120 },
+          "min_participants": { "type": "integer", "minimum": 2, "maximum": 50 },
+          "max_participants": { "type": "integer", "minimum": 2, "maximum": 50 },
+          "join_policy": { "enum": ["open", "approval", "invite_only"] },
+          "waitlist_enabled": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "generate_cover",
+      "operation_id": "createAiGeneration",
+      "description": "Generate an activity or post cover. The output remains a draft until the user confirms the exact asset.",
+      "risk": "medium",
+      "approval": "required_to_confirm_not_to_generate",
+      "required_scope": "ai:generate_cover",
+      "input_schema": {
+        "type": "object",
+        "required": ["purpose", "source_text"],
+        "properties": {
+          "purpose": { "enum": ["activity_cover", "post_cover"] },
+          "source_text": { "type": "string", "minLength": 1, "maxLength": 5000 },
+          "style": { "type": "string", "maxLength": 80 },
+          "aspect_ratio": { "enum": ["1:1", "4:3", "3:4", "16:9"], "default": "4:3" }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "confirm_generated_cover",
+      "operation_id": "confirmAiGeneration",
+      "description": "Bind the user's confirmation to the exact generated media hash and AI label metadata.",
+      "risk": "high",
+      "approval": "always",
+      "required_scope": "ai:confirm_asset",
+      "input_schema": {
+        "type": "object",
+        "required": ["job_id", "media_id", "media_sha256"],
+        "properties": {
+          "job_id": { "type": "string", "format": "uuid" },
+          "media_id": { "type": "string", "format": "uuid" },
+          "media_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "publish_activity",
+      "operation_id": "publishActivity",
+      "description": "Preview or publish a ready activity after safety and media checks.",
+      "risk": "high",
+      "approval": "conditional_or_always_for_third_party_agents",
+      "required_scope": "activity:publish",
+      "input_schema": {
+        "type": "object",
+        "required": ["activity_id", "expected_version", "dry_run"],
+        "properties": {
+          "activity_id": { "type": "string", "format": "uuid" },
+          "expected_version": { "type": "integer", "minimum": 1 },
+          "dry_run": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "join_activity",
+      "operation_id": "joinActivity",
+      "description": "Preview or apply to an activity; the result may be applied, waitlisted or joined.",
+      "risk": "high",
+      "approval": "conditional",
+      "required_scope": "activity:join",
+      "input_schema": {
+        "type": "object",
+        "required": ["activity_id", "dry_run"],
+        "properties": {
+          "activity_id": { "type": "string", "format": "uuid" },
+          "application_note": { "type": "string", "maxLength": 500 },
+          "accept_rules": { "type": "boolean" },
+          "dry_run": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "invite_user",
+      "operation_id": "inviteToActivity",
+      "description": "Invite one eligible user to an activity after block, rate and privacy checks.",
+      "risk": "high",
+      "approval": "conditional",
+      "required_scope": "activity:invite",
+      "input_schema": {
+        "type": "object",
+        "required": ["activity_id", "user_id", "dry_run"],
+        "properties": {
+          "activity_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "message": { "type": "string", "maxLength": 300 },
+          "dry_run": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "send_message",
+      "operation_id": "sendMessage",
+      "description": "Send one message in an existing authorized conversation.",
+      "risk": "high",
+      "approval": "conversation_grant_or_per_message",
+      "required_scope": "message:send",
+      "input_schema": {
+        "type": "object",
+        "required": ["conversation_id", "client_message_id", "text", "dry_run"],
+        "properties": {
+          "conversation_id": { "type": "string", "format": "uuid" },
+          "client_message_id": { "type": "string", "minLength": 8, "maxLength": 80 },
+          "text": { "type": "string", "minLength": 1, "maxLength": 5000 },
+          "dry_run": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "summarize_conversation",
+      "operation_id": "summarizeConversation",
+      "description": "Summarize only messages visible to the represented user; the raw transcript is not returned to the Agent.",
+      "risk": "medium",
+      "approval": "session_or_conversation_grant",
+      "required_scope": "message:summarize",
+      "input_schema": {
+        "type": "object",
+        "required": ["conversation_id"],
+        "properties": {
+          "conversation_id": { "type": "string", "format": "uuid" },
+          "since_message_id": { "type": "string", "format": "uuid" },
+          "focus": { "type": "string", "maxLength": 200 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "update_profile",
+      "operation_id": "updateMyProfile",
+      "description": "Preview or update non-sensitive profile fields; visibility changes always require approval.",
+      "risk": "medium",
+      "approval": "conditional",
+      "required_scope": "profile:write",
+      "input_schema": {
+        "type": "object",
+        "required": ["changes", "dry_run"],
+        "properties": {
+          "changes": {
+            "type": "object",
+            "properties": {
+              "display_name": { "type": "string", "maxLength": 40 },
+              "bio": { "type": "string", "maxLength": 500 },
+              "occupation": { "type": "string", "maxLength": 80 },
+              "availability": { "type": "object" }
+            },
+            "additionalProperties": false
+          },
+          "dry_run": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "block_user",
+      "operation_id": "blockUser",
+      "description": "Protect the user by blocking another user across all product surfaces. Silent mode does not notify the peer.",
+      "risk": "high",
+      "approval": "always_unless_immediate_safety_policy",
+      "required_scope": "social:block",
+      "input_schema": {
+        "type": "object",
+        "required": ["user_id", "mode", "reason_code"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "mode": { "enum": ["standard", "silent"] },
+          "reason_code": { "type": "string", "maxLength": 40 }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "report_content",
+      "operation_id": "createReport",
+      "description": "Submit a structured safety report with optional protective block.",
+      "risk": "high",
+      "approval": "always",
+      "required_scope": "safety:report",
+      "input_schema": {
+        "type": "object",
+        "required": ["target_type", "target_id", "reason_code"],
+        "properties": {
+          "target_type": { "enum": ["user", "post", "comment", "activity", "message", "conversation"] },
+          "target_id": { "type": "string", "format": "uuid" },
+          "reason_code": { "type": "string", "maxLength": 60 },
+          "details": { "type": "string", "maxLength": 1000 },
+          "protective_block": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>搭场移动端产品原型</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --brand: #0a84ff;
+      --brand-strong: #006edb;
+      --brand-soft: #eaf4ff;
+      --on-brand: #ffffff;
+      --accent: #ff7a45;
+      --accent-soft: #fff0e9;
+      --activity: #0a84ff;
+      --activity-soft: #eaf4ff;
+      --post: #8a5cf5;
+      --post-soft: #f2edff;
+      --ink: #15171a;
+      --secondary: #626870;
+      --tertiary: #90969e;
+      --surface: #ffffff;
+      --surface-2: #f5f7fa;
+      --surface-3: #edf1f5;
+      --line: rgba(28, 35, 43, .09);
+      --shadow: 0 10px 28px rgba(22, 49, 78, .10);
+      --nav-bg: rgba(255,255,255,.94);
+      --radius-card: 22px;
+      --radius-control: 16px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body[data-theme="teal"] {
+      --brand: #00a9b7;
+      --brand-strong: #008795;
+      --brand-soft: #e4f9fa;
+      --accent: #73bf45;
+      --accent-soft: #eff9e8;
+      --activity: #00a9b7;
+      --activity-soft: #e4f9fa;
+      --post: #4267c9;
+      --post-soft: #edf2ff;
+      --ink: #11262b;
+      --secondary: #597075;
+      --surface-2: #f1f7f7;
+      --surface-3: #e6f0f0;
+      --line: rgba(10, 64, 72, .10);
+      --shadow: 0 12px 32px rgba(0, 91, 101, .10);
+      --radius-card: 16px;
+      --radius-control: 13px;
+    }
+
+    body[data-theme="coral"] {
+      --brand: #ff694a;
+      --brand-strong: #e95032;
+      --brand-soft: #fff0eb;
+      --accent: #f5aa20;
+      --accent-soft: #fff6df;
+      --activity: #ff694a;
+      --activity-soft: #fff0eb;
+      --post: #d84b83;
+      --post-soft: #ffedf4;
+      --ink: #281d1a;
+      --secondary: #78635d;
+      --surface-2: #fbf5f2;
+      --surface-3: #f5eae5;
+      --line: rgba(93, 48, 35, .10);
+      --shadow: 0 12px 30px rgba(118, 49, 27, .11);
+      --radius-card: 26px;
+      --radius-control: 19px;
+    }
+
+    body[data-theme="midnight"] {
+      color-scheme: dark;
+      --brand: #ff304b;
+      --brand-strong: #ff6175;
+      --brand-soft: #3b1119;
+      --on-brand: #ffffff;
+      --accent: #e9ff32;
+      --accent-soft: #252c0b;
+      --activity: #ff435a;
+      --activity-soft: #3d1119;
+      --post: #c58bff;
+      --post-soft: #27173a;
+      --ink: #f6f6f4;
+      --secondary: #b8b9bd;
+      --tertiary: #777b84;
+      --surface: #0c0d10;
+      --surface-2: #17181d;
+      --surface-3: #25262c;
+      --line: rgba(255,255,255,.11);
+      --shadow: 0 18px 46px rgba(0,0,0,.46);
+      --nav-bg: rgba(11,12,15,.94);
+      --radius-card: 12px;
+      --radius-control: 8px;
+    }
+
+    body[data-theme="clash"] {
+      --brand: #713cff;
+      --brand-strong: #5725d9;
+      --brand-soft: #eae1ff;
+      --on-brand: #ffffff;
+      --accent: #c7ff22;
+      --accent-soft: #efffc0;
+      --activity: #713cff;
+      --activity-soft: #eae1ff;
+      --post: #f02c98;
+      --post-soft: #ffe0f1;
+      --ink: #111111;
+      --secondary: #4d4d4d;
+      --tertiary: #777777;
+      --surface: #fffdf4;
+      --surface-2: #f4f0ff;
+      --surface-3: #e8e3ef;
+      --line: #111111;
+      --shadow: 6px 6px 0 #111111;
+      --nav-bg: rgba(255,253,244,.96);
+      --radius-card: 5px;
+      --radius-control: 4px;
+    }
+
+    body[data-theme="cobalt"] {
+      --brand: #1746e0;
+      --brand-strong: #0b34ba;
+      --brand-soft: #e9eeff;
+      --on-brand: #ffffff;
+      --accent: #ffd51f;
+      --accent-soft: #fff6bd;
+      --activity: #1746e0;
+      --activity-soft: #e9eeff;
+      --post: #ee4b25;
+      --post-soft: #fff0eb;
+      --ink: #121c35;
+      --secondary: #55627d;
+      --tertiary: #8b94a6;
+      --surface: #ffffff;
+      --surface-2: #f1f4fb;
+      --surface-3: #e2e7f2;
+      --line: rgba(18,28,53,.13);
+      --shadow: 0 9px 0 #dfe5f4;
+      --nav-bg: rgba(255,255,255,.96);
+      --radius-card: 2px;
+      --radius-control: 999px;
+    }
+
+    body[data-theme="forest"] {
+      --brand: #145f46;
+      --brand-strong: #0d4935;
+      --brand-soft: #dfeee1;
+      --on-brand: #ffffff;
+      --accent: #ef7d57;
+      --accent-soft: #fae3d6;
+      --activity: #145f46;
+      --activity-soft: #dfeee1;
+      --post: #b65375;
+      --post-soft: #f5e0e8;
+      --ink: #24342a;
+      --secondary: #647268;
+      --tertiary: #929b94;
+      --surface: #fffaf0;
+      --surface-2: #f2eedf;
+      --surface-3: #e4dfce;
+      --line: rgba(32,69,49,.10);
+      --shadow: 0 14px 34px rgba(47,75,57,.11);
+      --nav-bg: rgba(255,250,240,.95);
+      --radius-card: 30px;
+      --radius-control: 22px;
+    }
+
+    body[data-theme="mono"] {
+      color-scheme: dark;
+      --brand: #8ee8ff;
+      --brand-strong: #b7f1ff;
+      --brand-soft: #17313b;
+      --on-brand: #061319;
+      --accent: #f3f5f7;
+      --accent-soft: #2a2d32;
+      --activity: #8ee8ff;
+      --activity-soft: #17313b;
+      --post: #d4d9e0;
+      --post-soft: #2a2d32;
+      --ink: #f4f6f8;
+      --secondary: #b0b7c0;
+      --tertiary: #747c86;
+      --surface: #0c1015;
+      --surface-2: #151a21;
+      --surface-3: #222933;
+      --line: rgba(207,227,240,.12);
+      --shadow: 0 16px 42px rgba(0,0,0,.42);
+      --nav-bg: rgba(11,15,20,.88);
+      --radius-card: 20px;
+      --radius-control: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #dfe5ea; font-family: var(--font); color: var(--ink); }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .app {
+      position: relative;
+      width: min(100vw, 390px);
+      height: min(100vh, 844px);
+      min-height: 720px;
+      margin: 0 auto;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .statusbar { height: 27px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 20px 4px; font-size: 12px; font-weight: 600; letter-spacing: .1px; }
+    .status-icons { display: flex; align-items: center; gap: 5px; }
+    .signal { width: 13px; height: 9px; background: linear-gradient(to right, var(--ink) 0 18%, transparent 18% 26%, var(--ink) 26% 47%, transparent 47% 55%, var(--ink) 55% 77%, transparent 77% 85%, var(--ink) 85%); clip-path: polygon(0 100%,0 75%,18% 75%,18% 55%,47% 55%,47% 30%,76% 30%,76% 0,100% 0,100% 100%); }
+    .battery { width: 19px; height: 9px; border: 1.4px solid var(--ink); border-radius: 3px; padding: 1px; position: relative; }
+    .battery:after { content:""; position:absolute; right:-3px; top:2px; width:2px; height:4px; border-radius:0 2px 2px 0; background:var(--ink); }
+    .battery > span { display:block; width:80%; height:100%; background:var(--ink); border-radius:1px; }
+    .screen { height: calc(100% - 27px - 72px); overflow: hidden; display: flex; flex-direction: column; }
+    .screen-scroll { overflow-y: auto; scrollbar-width: none; padding-bottom: 18px; }
+    .screen-scroll::-webkit-scrollbar { display: none; }
+    .topbar { min-height: 50px; padding: 6px 18px 8px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .topbar h1 { font-size: 25px; line-height: 1.1; margin:0; letter-spacing:-.6px; font-weight: 700; }
+    .topbar .kicker { color:var(--secondary); font-size:12px; margin-top:3px; }
+    .icon-btn { width:38px; height:38px; border:0; border-radius:50%; background:var(--surface-2); display:grid; place-items:center; padding:0; }
+    .icon { width:20px; height:20px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .segment { background:var(--surface-2); border-radius:999px; padding:3px; display:flex; align-items:center; }
+    .segment button { border:0; background:transparent; color:var(--secondary); min-width:66px; padding:7px 13px; border-radius:999px; font-size:14px; }
+    .segment button.active { background:var(--surface); color:var(--ink); box-shadow:0 2px 8px rgba(0,0,0,.08); font-weight:600; }
+    .search-row { display:flex; gap:9px; padding: 4px 18px 10px; }
+    .searchbox { height:44px; flex:1; background:var(--surface-2); border-radius:var(--radius-control); display:flex; align-items:center; gap:9px; padding:0 13px; color:var(--tertiary); }
+    .searchbox input { border:0; outline:0; background:transparent; width:100%; font-size:14px; min-width:0; }
+    .filter-btn { height:44px; width:46px; border:0; border-radius:var(--radius-control); background:var(--brand); color:var(--on-brand); display:grid; place-items:center; position:relative; }
+    .filter-dot { width:7px; height:7px; background:var(--accent); border:2px solid white; border-radius:50%; position:absolute; right:8px; top:7px; }
+    .chips { display:flex; gap:8px; overflow:hidden; padding: 0 18px 12px; }
+    .chip { flex:none; border:1px solid var(--line); background:var(--surface); color:var(--secondary); border-radius:999px; padding:7px 11px; font-size:12px; white-space:nowrap; }
+    .chip.active { color:var(--brand-strong); background:var(--brand-soft); border-color:transparent; font-weight:600; }
+    .feed { display:grid; gap:12px; padding:0 18px 18px; }
+    .feed-card { border-radius:var(--radius-card); overflow:hidden; background:var(--surface); border:1px solid var(--line); box-shadow:0 6px 22px rgba(23, 36, 48, .055); }
+    .feed-card.compact { display:grid; grid-template-columns:112px 1fr; min-height:134px; }
+    .feed-image { width:100%; height:164px; object-fit:cover; display:block; }
+    .feed-card.compact .feed-image { height:100%; }
+    .feed-body { padding:12px 13px 13px; min-width:0; }
+    .kind { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:4px 8px; border-radius:999px; }
+    .kind.activity { color:var(--activity); background:var(--activity-soft); }
+    .kind.post { color:var(--post); background:var(--post-soft); }
+    .kind .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+    .feed-title { margin:8px 0 7px; font-size:17px; line-height:1.28; letter-spacing:-.15px; font-weight:700; }
+    .meta { color:var(--secondary); font-size:12px; display:flex; align-items:center; gap:6px; line-height:1.5; }
+    .meta + .meta { margin-top:3px; }
+    .feed-footer { margin-top:11px; padding-top:10px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .avatar-stack { display:flex; align-items:center; }
+    .avatar { width:26px; height:26px; border-radius:50%; object-fit:cover; border:2px solid var(--surface); background:var(--surface-3); }
+    .avatar + .avatar { margin-left:-7px; }
+    .join { color:var(--brand-strong); font-size:12px; font-weight:700; }
+    .userline { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+    .userline .avatar { width:30px; height:30px; border:0; }
+    .userline strong { font-size:13px; }
+    .userline span { display:block; color:var(--tertiary); font-size:11px; margin-top:2px; }
+    .post-text { font-size:14px; line-height:1.5; margin:0 0 10px; }
+    .post-actions { display:flex; gap:18px; color:var(--secondary); font-size:12px; }
+
+    .bottom-nav { position:absolute; bottom:0; left:0; right:0; height:72px; background:var(--nav-bg); border-top:1px solid var(--line); display:grid; grid-template-columns:repeat(5,1fr); padding:7px 8px 11px; backdrop-filter:blur(18px); z-index:10; }
+    .nav-item { border:0; background:transparent; color:var(--tertiary); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:10px; padding:0; position:relative; }
+    .nav-item .icon { width:22px; height:22px; stroke-width:1.8; }
+    .nav-item.active { color:var(--brand); font-weight:700; }
+    .nav-item.publish .nav-plus { width:39px; height:32px; border-radius:12px; background:var(--brand); color:var(--on-brand); display:grid; place-items:center; box-shadow:0 6px 14px color-mix(in srgb, var(--brand) 28%, transparent); }
+    .nav-item.publish .icon { width:19px; height:19px; }
+    .badge-count { position:absolute; top:1px; right:14px; min-width:15px; height:15px; padding:0 4px; border-radius:999px; background:#f04444; color:#fff; border:2px solid var(--surface); font-size:8px; display:grid; place-items:center; }
+
+    .match-wrap { padding:4px 18px 16px; display:flex; flex-direction:column; min-height:0; flex:1; }
+    .match-card { position:relative; border-radius:calc(var(--radius-card) + 4px); overflow:hidden; min-height:0; flex:1; box-shadow:var(--shadow); background:var(--surface-3); }
+    .match-card > img { width:100%; height:100%; object-fit:cover; display:block; }
+    .match-gradient { position:absolute; inset:35% 0 0; background:linear-gradient(transparent, rgba(4,12,17,.84)); }
+    .match-info { position:absolute; left:0; right:0; bottom:0; color:#fff; padding:18px 18px 19px; }
+    .identity { display:flex; align-items:center; gap:8px; }
+    .identity h2 { font-size:26px; margin:0; letter-spacing:-.4px; }
+    .verified { display:inline-flex; align-items:center; gap:4px; padding:4px 7px; border-radius:999px; background:rgba(255,255,255,.18); backdrop-filter:blur(8px); font-size:10px; }
+    .profile-id { margin:5px 0 9px; opacity:.84; font-size:11px; }
+    .match-bio { font-size:13px; line-height:1.45; margin-bottom:10px; }
+    .interest-list { display:flex; gap:6px; flex-wrap:wrap; }
+    .interest-list span { padding:6px 8px; border-radius:999px; background:rgba(255,255,255,.16); backdrop-filter:blur(8px); font-size:11px; }
+    .match-actions { display:flex; justify-content:center; align-items:center; gap:14px; padding:14px 0 0; }
+    .round-action { width:52px; height:52px; border-radius:50%; border:1px solid var(--line); background:var(--surface); display:grid; place-items:center; color:var(--secondary); box-shadow:0 6px 18px rgba(14,30,40,.08); }
+    .round-action.primary { width:62px; height:62px; background:var(--brand); color:var(--on-brand); border:0; }
+    .round-action.accent { color:var(--accent); }
+    .round-action .icon { width:24px; height:24px; }
+
+    .publish-screen { background:var(--surface-2); }
+    .publish-screen .topbar { background:var(--surface); }
+    .text-btn { border:0; background:transparent; color:var(--secondary); font-size:14px; padding:8px 0; }
+    .primary-text { color:var(--brand); font-weight:700; }
+    .compose { padding:14px 18px 18px; overflow-y:auto; scrollbar-width:none; }
+    .compose::-webkit-scrollbar { display:none; }
+    .compose-card { background:var(--surface); border-radius:var(--radius-card); padding:14px; margin-bottom:12px; }
+    .publish-type { display:flex; gap:8px; margin-bottom:12px; }
+    .type-option { flex:1; border:0; border-radius:13px; padding:10px; background:var(--surface-2); color:var(--secondary); font-size:13px; }
+    .type-option.active { background:var(--brand-soft); color:var(--brand-strong); font-weight:700; }
+    .title-input, .body-input { width:100%; border:0; outline:0; resize:none; background:transparent; padding:4px 0; }
+    .title-input { font-size:19px; font-weight:700; min-height:38px; }
+    .body-input { font-size:14px; line-height:1.5; min-height:64px; color:var(--secondary); }
+    .cover { position:relative; width:100%; height:179px; border-radius:17px; overflow:hidden; background:var(--surface-3); }
+    .cover img { width:100%; height:100%; object-fit:cover; display:block; }
+    .ai-label { position:absolute; left:10px; top:10px; background:rgba(16,22,25,.72); color:white; border-radius:999px; font-size:10px; padding:6px 9px; backdrop-filter:blur(8px); display:flex; gap:5px; align-items:center; }
+    .cover-edit { position:absolute; right:10px; bottom:10px; border:0; background:rgba(255,255,255,.91); border-radius:999px; padding:7px 10px; font-size:11px; }
+    .ai-note { display:flex; align-items:flex-start; gap:9px; padding:10px 2px 0; color:var(--secondary); font-size:11px; line-height:1.45; }
+    .ai-spark { color:var(--brand); font-weight:800; }
+    .form-list { background:var(--surface); border-radius:var(--radius-card); padding:1px 14px; }
+    .form-row { min-height:51px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line); font-size:13px; }
+    .form-row:last-child { border-bottom:0; }
+    .form-row .row-icon { color:var(--brand); width:22px; display:grid; place-items:center; }
+    .form-row .value { margin-left:auto; color:var(--secondary); display:flex; align-items:center; gap:5px; }
+
+    .relation-strip { display:grid; grid-template-columns:1fr 1fr 1fr; padding:3px 18px 13px; gap:8px; }
+    .relation { border:0; background:var(--surface-2); border-radius:17px; padding:10px 8px; text-align:center; }
+    .relation strong { display:block; font-size:16px; margin-bottom:2px; }
+    .relation span { color:var(--secondary); font-size:11px; }
+    .message-tabs { display:flex; align-items:center; gap:18px; padding:7px 18px 8px; border-bottom:1px solid var(--line); }
+    .message-tabs button { border:0; background:transparent; color:var(--secondary); padding:8px 0; font-size:14px; position:relative; }
+    .message-tabs button.active { color:var(--ink); font-weight:700; }
+    .message-tabs button.active:after { content:""; position:absolute; height:3px; border-radius:3px; left:0; right:0; bottom:0; background:var(--brand); }
+    .conversation-list { padding:0 18px; overflow-y:auto; scrollbar-width:none; }
+    .conversation-list::-webkit-scrollbar { display:none; }
+    .conversation { display:grid; grid-template-columns:50px 1fr auto; gap:11px; align-items:center; min-height:74px; border-bottom:1px solid var(--line); }
+    .conv-avatar { width:50px; height:50px; border-radius:18px; object-fit:cover; background:var(--surface-3); }
+    .conv-avatar.group { display:grid; grid-template-columns:1fr 1fr; gap:2px; padding:3px; }
+    .conv-avatar.group img { width:100%; height:20px; border-radius:6px; object-fit:cover; }
+    .conv-main { min-width:0; }
+    .conv-title { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:700; }
+    .group-tag { font-size:9px; padding:3px 5px; color:var(--brand-strong); background:var(--brand-soft); border-radius:5px; }
+    .conv-preview { color:var(--secondary); font-size:12px; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .conv-side { text-align:right; align-self:stretch; padding-top:16px; }
+    .conv-time { font-size:10px; color:var(--tertiary); }
+    .unread { width:18px; height:18px; border-radius:50%; background:var(--brand); color:white; display:grid; place-items:center; font-size:9px; margin:9px 0 0 auto; }
+    .silent-block { display:flex; align-items:center; gap:3px; color:var(--tertiary); font-size:9px; margin-top:9px; }
+
+    .profile-head { margin:2px 18px 0; border-radius:var(--radius-card); background:linear-gradient(145deg, var(--brand-soft), var(--surface)); padding:16px; border:1px solid color-mix(in srgb, var(--brand) 12%, transparent); }
+    .profile-top { display:flex; gap:13px; align-items:center; }
+    .profile-photo { width:78px; height:78px; border-radius:27px; object-fit:cover; border:3px solid var(--surface); box-shadow:0 6px 18px rgba(0,0,0,.08); }
+    .profile-name { font-size:21px; font-weight:750; letter-spacing:-.3px; }
+    .profile-id-line { font-size:11px; color:var(--secondary); margin-top:4px; }
+    .verified-inline { color:var(--brand-strong); font-size:11px; margin-top:7px; display:flex; align-items:center; gap:4px; }
+    .edit-profile { margin-left:auto; align-self:flex-start; border:0; color:var(--brand-strong); background:var(--surface); border-radius:999px; padding:8px 11px; font-size:11px; box-shadow:0 3px 10px rgba(0,0,0,.05); }
+    .stats { display:grid; grid-template-columns:repeat(3, 1fr); margin-top:16px; text-align:center; }
+    .stat { border-right:1px solid var(--line); }
+    .stat:last-child { border-right:0; }
+    .stat strong { display:block; font-size:17px; }
+    .stat span { display:block; color:var(--secondary); font-size:10px; margin-top:3px; }
+    .completion { margin:12px 18px; padding:13px 14px; border-radius:17px; background:var(--surface-2); display:flex; align-items:center; gap:11px; }
+    .ring { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:conic-gradient(var(--brand) 0 82%, var(--surface-3) 82%); position:relative; font-size:9px; font-weight:700; }
+    .ring:before { content:""; position:absolute; inset:5px; border-radius:50%; background:var(--surface-2); }
+    .ring span { position:relative; }
+    .completion strong { display:block; font-size:13px; }
+    .completion p { margin:3px 0 0; font-size:10px; color:var(--secondary); }
+    .completion button { margin-left:auto; border:0; background:var(--brand); color:var(--on-brand); border-radius:999px; padding:8px 10px; font-size:10px; }
+    .profile-section { padding:3px 18px 9px; }
+    .section-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+    .section-title h3 { font-size:15px; margin:0; }
+    .section-title span { color:var(--tertiary); font-size:11px; }
+    .tag-cloud { display:flex; flex-wrap:wrap; gap:7px; }
+    .profile-tag { background:var(--brand-soft); color:var(--brand-strong); border-radius:999px; padding:7px 10px; font-size:11px; }
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .info-item { padding:10px 11px; background:var(--surface-2); border-radius:14px; }
+    .info-item span { display:block; color:var(--tertiary); font-size:9px; }
+    .info-item strong { display:block; font-size:12px; margin-top:4px; }
+
+    .sheet-backdrop { position:absolute; inset:0; background:rgba(10,17,22,.34); z-index:30; opacity:0; pointer-events:none; transition:opacity .2s; }
+    .sheet-backdrop.open { opacity:1; pointer-events:auto; }
+    .filter-sheet { position:absolute; left:0; right:0; bottom:0; border-radius:28px 28px 0 0; background:var(--surface); padding:10px 18px 24px; transform:translateY(105%); transition:transform .25s ease; box-shadow:0 -20px 50px rgba(0,0,0,.12); }
+    .sheet-backdrop.open .filter-sheet { transform:translateY(0); }
+    .sheet-handle { width:38px; height:4px; border-radius:3px; background:var(--surface-3); margin:0 auto 14px; }
+    .sheet-title { display:flex; justify-content:space-between; align-items:center; }
+    .sheet-title h2 { font-size:19px; margin:0; }
+    .sheet-title button { border:0; background:transparent; color:var(--brand); font-size:12px; }
+    .filter-group { margin-top:16px; }
+    .filter-label { display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:9px; }
+    .filter-label span { color:var(--brand); font-weight:500; }
+    .choice-row { display:flex; flex-wrap:wrap; gap:7px; }
+    .choice { border:0; background:var(--surface-2); color:var(--secondary); border-radius:999px; padding:8px 11px; font-size:11px; }
+    .choice.active { background:var(--brand-soft); color:var(--brand-strong); font-weight:700; }
+    .range { width:100%; accent-color:var(--brand); }
+    .apply-filter { margin-top:20px; width:100%; border:0; border-radius:16px; background:var(--brand); color:var(--on-brand); padding:13px; font-weight:700; }
+
+    body[data-theme="teal"] .topbar h1 { letter-spacing:.2px; font-weight:650; }
+    body[data-theme="teal"] .feed-card { box-shadow:none; }
+    body[data-theme="teal"] .nav-item.publish .nav-plus { border-radius:4px 16px 4px 16px; }
+    body[data-theme="teal"] .profile-photo { border-radius:18px; }
+    body[data-theme="coral"] .topbar h1 { font-weight:800; }
+    body[data-theme="coral"] .feed-card { border:0; box-shadow:var(--shadow); }
+    body[data-theme="coral"] .nav-item.publish .nav-plus { transform:rotate(-3deg); }
+    body[data-theme="coral"] .match-card { transform:rotate(-.4deg); }
+
+    /* 04 Midnight Red: immersive media, hard hierarchy, nightlife / sport */
+    body[data-theme="midnight"] .app { background:radial-gradient(circle at 95% 0, #351019 0, var(--surface) 29%); }
+    body[data-theme="midnight"] .topbar h1 { text-transform:uppercase; font-style:italic; letter-spacing:-1px; }
+    body[data-theme="midnight"] .feed { padding-left:0; padding-right:0; gap:1px; background:var(--line); }
+    body[data-theme="midnight"] .feed-card { border:0; border-radius:0; box-shadow:none; }
+    body[data-theme="midnight"] .feed-image { height:190px; }
+    body[data-theme="midnight"] .feed-body { padding:14px 18px 16px; }
+    body[data-theme="midnight"] .kind { border-radius:2px; text-transform:uppercase; letter-spacing:.5px; }
+    body[data-theme="midnight"] .segment { border:1px solid var(--line); }
+    body[data-theme="midnight"] .nav-item.publish .nav-plus { border-radius:2px; transform:skew(-8deg); }
+    body[data-theme="midnight"] .profile-head { background:linear-gradient(145deg, #3a1018, #111217); border-color:#5c1622; }
+    body[data-theme="midnight"] .match-card { border:1px solid #48202a; }
+    body[data-theme="midnight"] .filter-sheet { border-top:1px solid #4a1d25; }
+
+    /* 05 Electric Clash: poster-like modules and deliberate visual collision */
+    body[data-theme="clash"] .app { background:linear-gradient(135deg, var(--surface) 0 72%, var(--accent-soft) 72%); }
+    body[data-theme="clash"] .topbar h1 { font-weight:900; letter-spacing:-1px; }
+    body[data-theme="clash"] .feed-card,
+    body[data-theme="clash"] .compose-card,
+    body[data-theme="clash"] .form-list,
+    body[data-theme="clash"] .profile-head { border:2px solid var(--ink); box-shadow:var(--shadow); }
+    body[data-theme="clash"] .feed { gap:18px; padding-bottom:26px; }
+    body[data-theme="clash"] .kind { border-radius:1px; border:1px solid currentColor; }
+    body[data-theme="clash"] .filter-btn,
+    body[data-theme="clash"] .nav-item.publish .nav-plus { border:2px solid var(--ink); box-shadow:3px 3px 0 var(--ink); }
+    body[data-theme="clash"] .segment { background:var(--accent); border:2px solid var(--ink); border-radius:3px; }
+    body[data-theme="clash"] .segment button { border-radius:1px; }
+    body[data-theme="clash"] .segment button.active { background:var(--ink); color:var(--accent); box-shadow:none; }
+    body[data-theme="clash"] .round-action { border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink); }
+    body[data-theme="clash"] .profile-photo { border-radius:2px; border:2px solid var(--ink); }
+    body[data-theme="clash"] .relation { border:1px solid var(--ink); border-radius:3px; }
+    body[data-theme="clash"] .bottom-nav { border-top:2px solid var(--ink); }
+
+    /* 06 Cobalt Pop: editorial blocks, numbered information hierarchy */
+    body[data-theme="cobalt"] .topbar { border-bottom:5px solid var(--accent); }
+    body[data-theme="cobalt"] .topbar h1 { font-weight:900; letter-spacing:-1.2px; }
+    body[data-theme="cobalt"] .feed-card { box-shadow:var(--shadow); border-left:6px solid var(--brand); }
+    body[data-theme="cobalt"] .feed-card.compact { border-left-color:var(--post); }
+    body[data-theme="cobalt"] .feed-title:before { content:"01 / "; color:var(--brand); font-size:11px; letter-spacing:.4px; }
+    body[data-theme="cobalt"] .kind { border-radius:0; }
+    body[data-theme="cobalt"] .nav-item.publish .nav-plus { background:var(--accent); color:var(--ink); border-radius:999px; }
+    body[data-theme="cobalt"] .round-action.primary { box-shadow:0 0 0 7px var(--accent-soft); }
+    body[data-theme="cobalt"] .profile-head { border-left:7px solid var(--brand); border-radius:2px; background:var(--surface); }
+    body[data-theme="cobalt"] .compose-card,
+    body[data-theme="cobalt"] .form-list { border-radius:2px; border-left:6px solid var(--brand); }
+    body[data-theme="cobalt"] .relation { border-radius:2px; border-bottom:4px solid var(--brand); }
+
+    /* 07 Forest Cream: calm, community-first, organic floating navigation */
+    body[data-theme="forest"] .app { background:radial-gradient(circle at 88% 8%, #e4eddc 0 11%, transparent 12%), var(--surface); }
+    body[data-theme="forest"] .topbar h1 { font-family:Georgia, "Songti SC", serif; font-weight:700; }
+    body[data-theme="forest"] .feed-card { border:0; box-shadow:var(--shadow); }
+    body[data-theme="forest"] .feed-image { border-radius:30px 30px 8px 8px; }
+    body[data-theme="forest"] .kind { border-radius:12px 4px 12px 4px; }
+    body[data-theme="forest"] .bottom-nav { left:12px; right:12px; bottom:8px; height:60px; border:1px solid var(--line); border-radius:24px; padding-bottom:6px; box-shadow:0 10px 28px rgba(47,75,57,.14); }
+    body[data-theme="forest"] .nav-item.publish .nav-plus { border-radius:50%; width:38px; height:38px; }
+    body[data-theme="forest"] .profile-photo { border-radius:50%; }
+    body[data-theme="forest"] .profile-head { background:linear-gradient(145deg, #e2eedc, #fffaf0); }
+    body[data-theme="forest"] .round-action { border-radius:18px 7px 18px 7px; }
+
+    /* 08 Mono Ice: dark technical minimalism, dense list rhythm, glass */
+    body[data-theme="mono"] .app { background:linear-gradient(180deg, #111824, var(--surface) 24%); }
+    body[data-theme="mono"] .topbar h1 { font-weight:500; letter-spacing:1.2px; }
+    body[data-theme="mono"] .feed { gap:0; padding-left:12px; padding-right:12px; }
+    body[data-theme="mono"] .feed-card { border-radius:0; border-left:0; border-right:0; box-shadow:none; background:transparent; }
+    body[data-theme="mono"] .feed-image { filter:saturate(.35) contrast(1.05); border-radius:18px; }
+    body[data-theme="mono"] .kind { border:1px solid currentColor; background:transparent; }
+    body[data-theme="mono"] .searchbox,
+    body[data-theme="mono"] .segment,
+    body[data-theme="mono"] .relation { background:rgba(255,255,255,.055); backdrop-filter:blur(16px); border:1px solid var(--line); }
+    body[data-theme="mono"] .bottom-nav { left:10px; right:10px; bottom:8px; height:60px; border:1px solid var(--line); border-radius:20px; padding-bottom:6px; }
+    body[data-theme="mono"] .nav-item.publish .nav-plus { color:var(--on-brand); border-radius:8px; }
+    body[data-theme="mono"] .profile-head { background:linear-gradient(145deg, #162731, #10141a); }
+    body[data-theme="mono"] .profile-photo { filter:grayscale(1); border-radius:16px; }
+    body[data-theme="mono"] .round-action { backdrop-filter:blur(12px); }
+
+    @media (max-width: 350px) {
+      .topbar, .search-row, .feed, .chips, .match-wrap, .conversation-list, .profile-section { padding-left:12px; padding-right:12px; }
+      .relation-strip { padding-left:12px; padding-right:12px; }
+      .segment button { min-width:58px; padding-left:10px; padding-right:10px; }
+    }
+  </style>
+</head>
+<body data-theme="blue">
+  <main class="app" aria-label="搭场移动端产品原型">
+    <header class="statusbar" aria-label="系统状态栏">
+      <span>9:41</span>
+      <span class="status-icons"><span class="signal"></span><span>5G</span><span class="battery"><span></span></span></span>
+    </header>
+    <section id="screen" class="screen"></section>
+    <nav id="bottomNav" class="bottom-nav" aria-label="主导航"></nav>
+    <div id="filterLayer" class="sheet-backdrop" aria-hidden="true"></div>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const requestedTheme = params.get('theme') || 'blue';
+    const requestedScreen = params.get('screen') || 'home';
+    const validThemes = ['blue', 'teal', 'coral', 'midnight', 'clash', 'cobalt', 'forest', 'mono'];
+    const validScreens = ['home', 'match', 'publish', 'messages', 'profile'];
+    document.body.dataset.theme = validThemes.includes(requestedTheme) ? requestedTheme : 'blue';
+
+    const svg = (paths, viewBox='0 0 24 24') => `<svg class="icon" viewBox="${viewBox}" aria-hidden="true">${paths}</svg>`;
+    const icons = {
+      home: svg('<path d="M3 10.8 12 3l9 7.8v9.7a.5.5 0 0 1-.5.5H15v-7H9v7H3.5a.5.5 0 0 1-.5-.5z"/>'),
+      match: svg('<path d="M12 21s-7.5-4.4-7.5-10.6A4.4 4.4 0 0 1 12 7.3a4.4 4.4 0 0 1 7.5 3.1C19.5 16.6 12 21 12 21Z"/>'),
+      plus: svg('<path d="M12 5v14M5 12h14"/>'),
+      message: svg('<path d="M20 15a4 4 0 0 1-4 4H8l-5 2 1.5-4A6 6 0 0 1 3 13V8a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z"/>'),
+      user: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+      search: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'),
+      filter: svg('<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>'),
+      bell: svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>'),
+      more: svg('<circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>'),
+      map: svg('<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/>'),
+      calendar: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>'),
+      users: svg('<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/>'),
+      x: svg('<path d="m6 6 12 12M18 6 6 18"/>'),
+      star: svg('<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>'),
+      heart: svg('<path d="M12 21s-7.5-4.4-7.5-10.6A4.4 4.4 0 0 1 12 7.3a4.4 4.4 0 0 1 7.5 3.1C19.5 16.6 12 21 12 21Z"/>'),
+      chevron: svg('<path d="m9 18 6-6-6-6"/>'),
+      pin: svg('<path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>'),
+      clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+      image: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-5-5L5 20"/>'),
+      shield: svg('<path d="M12 3 4 6v5c0 5 3.2 8.3 8 10 4.8-1.7 8-5 8-10V6z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>'),
+      edit: svg('<path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10zM14 7l3 3"/>'),
+      camera: svg('<path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/>'),
+      mute: svg('<path d="M11 5 6 9H3v6h3l5 4zM17 9l4 4M21 9l-4 4"/>')
+    };
+
+    const screens = {
+      home: () => `
+        <div class="topbar">
+          <div><h1>发现</h1><div class="kicker">今天也去见点新鲜的人</div></div>
+          <div class="segment" aria-label="首页范围"><button class="active" data-feed="recommend">推荐</button><button data-feed="city">同城</button></div>
+        </div>
+        <div class="search-row">
+          <label class="searchbox">${icons.search}<input aria-label="搜索" placeholder="搜活动、地点、帖子或用户"></label>
+          <button class="filter-btn" id="openFilter" aria-label="筛选活动">${icons.filter}<span class="filter-dot"></span></button>
+        </div>
+        <div class="chips"><button class="chip active">为你精选</button><button class="chip">今晚</button><button class="chip">运动</button><button class="chip">Citywalk</button><button class="chip">桌游</button></div>
+        <div class="screen-scroll">
+          <div class="feed">
+            <article class="feed-card">
+              <img class="feed-image" src="assets/badminton.jpg" alt="羽毛球活动">
+              <div class="feed-body">
+                <span class="kind activity"><span class="dot"></span>活动 · 还差 2 人</span>
+                <h2 class="feed-title">周三下班羽毛球｜新手友好局</h2>
+                <div class="meta">${icons.calendar} 今天 19:30 · 2 小时</div>
+                <div class="meta">${icons.pin} 徐汇滨江 · 距你 2.4 km</div>
+                <div class="feed-footer"><span class="avatar-stack"><img class="avatar" src="assets/profile-lin.jpg"><img class="avatar" src="assets/profile-chen.jpg"><img class="avatar" src="assets/profile-wu.jpg"></span><span class="join">4/6 人 · 查看活动</span></div>
+              </div>
+            </article>
+            <article class="feed-card compact">
+              <img class="feed-image" src="assets/citywalk.jpg" alt="城市街景动态">
+              <div class="feed-body">
+                <div class="userline"><img class="avatar" src="assets/profile-he.jpg"><div><strong>小何在散步</strong><span>12 分钟前 · 静安</span></div></div>
+                <span class="kind post"><span class="dot"></span>动态</span>
+                <p class="post-text">周末想走一条老建筑路线，有没有懂咖啡的搭子一起？</p>
+                <div class="post-actions"><span>♡ 26</span><span>◯ 8</span><span>↗ 分享</span></div>
+              </div>
+            </article>
+          </div>
+        </div>`,
+
+      match: () => `
+        <div class="topbar"><div><h1>找搭子</h1><div class="kicker">基于共同兴趣与可参与时间</div></div><button class="icon-btn" aria-label="匹配设置">${icons.filter}</button></div>
+        <div class="match-wrap">
+          <article class="match-card">
+            <img src="assets/profile-lin.jpg" alt="林夏的个人照片">
+            <div class="match-gradient"></div>
+            <div class="match-info">
+              <div class="identity"><h2>林夏，26</h2><span class="verified">✓ 已实名</span></div>
+              <div class="profile-id">ID DAC-23017 · 上海 · 2.1 km</div>
+              <div class="match-bio">产品设计师｜周末户外派<br>比起尬聊，更想一起完成一件有趣的小事。</div>
+              <div class="interest-list"><span>羽毛球</span><span>公路骑行</span><span>独立电影</span><span>INFJ</span></div>
+            </div>
+          </article>
+          <div class="match-actions">
+            <button class="round-action" aria-label="不感兴趣">${icons.x}</button>
+            <button class="round-action accent" aria-label="特别想认识">${icons.star}</button>
+            <button class="round-action primary" aria-label="喜欢">${icons.heart}</button>
+          </div>
+        </div>`,
+
+      publish: () => `
+        <div class="publish-screen" style="height:100%;display:flex;flex-direction:column">
+          <div class="topbar"><button class="text-btn">取消</button><div><h1 style="font-size:20px">发布</h1></div><button class="text-btn primary-text">下一步</button></div>
+          <div class="compose">
+            <div class="compose-card">
+              <div class="publish-type"><button class="type-option active">发起活动</button><button class="type-option">发布动态</button></div>
+              <input class="title-input" aria-label="标题" value="周末一起去逛老建筑">
+              <textarea class="body-input" aria-label="正文">想找 4 位搭子，从武康路出发，边走边拍照。新手也欢迎，路线结束后一起喝咖啡。</textarea>
+              <div class="cover">
+                <img src="assets/citywalk.jpg" alt="AI生成的活动封面预览">
+                <span class="ai-label"><span>✦</span> AI 生成内容</span>
+                <button class="cover-edit">更换 / 编辑</button>
+              </div>
+              <div class="ai-note"><span class="ai-spark">✦</span><span>未上传图片时，系统会根据正文生成封面。发布前必须由你预览确认，并保留 AI 标识。</span></div>
+            </div>
+            <div class="form-list">
+              <div class="form-row"><span class="row-icon">${icons.calendar}</span><strong>活动时间</strong><span class="value">周六 14:00 ${icons.chevron}</span></div>
+              <div class="form-row"><span class="row-icon">${icons.pin}</span><strong>集合地点</strong><span class="value">武康大楼 ${icons.chevron}</span></div>
+              <div class="form-row"><span class="row-icon">${icons.users}</span><strong>活动人数</strong><span class="value">2–6 人 ${icons.chevron}</span></div>
+              <div class="form-row"><span class="row-icon">${icons.shield}</span><strong>加入方式</strong><span class="value">组织者审核 ${icons.chevron}</span></div>
+            </div>
+          </div>
+        </div>`,
+
+      messages: () => `
+        <div class="topbar"><div><h1>消息</h1><div class="kicker">关系与活动沟通都在这里</div></div><button class="icon-btn" aria-label="消息设置">${icons.more}</button></div>
+        <div class="relation-strip">
+          <button class="relation"><strong>126</strong><span>我关注的</span></button>
+          <button class="relation"><strong>284</strong><span>关注我的</span></button>
+          <button class="relation"><strong>18</strong><span>新关注</span></button>
+        </div>
+        <div class="message-tabs"><button class="active">全部</button><button>活动群</button><button>私信</button><button>系统</button></div>
+        <div class="conversation-list">
+          <article class="conversation">
+            <div class="conv-avatar group"><img src="assets/profile-lin.jpg"><img src="assets/profile-chen.jpg"><img src="assets/profile-he.jpg"><img src="assets/profile-wu.jpg"></div>
+            <div class="conv-main"><div class="conv-title">周三羽毛球 <span class="group-tag">活动群</span></div><div class="conv-preview">林夏：球场已订，大家地铁口见～</div></div>
+            <div class="conv-side"><div class="conv-time">18:42</div><div class="unread">3</div></div>
+          </article>
+          <article class="conversation">
+            <img class="conv-avatar" src="assets/profile-chen.jpg">
+            <div class="conv-main"><div class="conv-title">陈屿</div><div class="conv-preview">我也住附近，要不要一起骑过去？</div></div>
+            <div class="conv-side"><div class="conv-time">17:15</div><div class="unread">1</div></div>
+          </article>
+          <article class="conversation">
+            <img class="conv-avatar" src="assets/profile-he.jpg">
+            <div class="conv-main"><div class="conv-title">小何在散步</div><div class="conv-preview">收到，那周六见。</div></div>
+            <div class="conv-side"><div class="conv-time">昨天</div></div>
+          </article>
+          <article class="conversation">
+            <img class="conv-avatar" src="assets/profile-wu.jpg">
+            <div class="conv-main"><div class="conv-title">吴同学</div><div class="conv-preview">你们玩得开心</div></div>
+            <div class="conv-side"><div class="conv-time">周一</div><div class="silent-block">${icons.mute} 已静默屏蔽</div></div>
+          </article>
+        </div>`,
+
+      profile: () => `
+        <div class="topbar"><div><h1>我的</h1><div class="kicker">让合适的人更快了解你</div></div><button class="icon-btn" aria-label="设置">${icons.more}</button></div>
+        <div class="screen-scroll">
+          <section class="profile-head">
+            <div class="profile-top">
+              <img class="profile-photo" src="assets/profile-chen.jpg" alt="陈屿的头像">
+              <div><div class="profile-name">陈屿，28</div><div class="profile-id-line">ID DAC-10982 · 上海</div><div class="verified-inline">✓ 已完成实名认证</div></div>
+              <button class="edit-profile">编辑资料</button>
+            </div>
+            <div class="stats"><div class="stat"><strong>12</strong><span>参加活动</span></div><div class="stat"><strong>4.9</strong><span>搭子评价</span></div><div class="stat"><strong>86%</strong><span>履约率</span></div></div>
+          </section>
+          <div class="completion"><div class="ring"><span>82%</span></div><div><strong>完善资料，提升匹配质量</strong><p>再添加 1 张生活照和空闲时间</p></div><button>去完善</button></div>
+          <section class="profile-section">
+            <div class="section-title"><h3>我的照片</h3><span>4/6 张</span></div>
+            <div style="display:grid;grid-template-columns:1.3fr .85fr .85fr;gap:7px;height:112px"><img src="assets/profile-chen.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:15px"><img src="assets/friends.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:15px"><div style="background:var(--surface-2);border-radius:15px;display:grid;place-items:center;color:var(--brand)">${icons.camera}</div></div>
+          </section>
+          <section class="profile-section">
+            <div class="section-title"><h3>兴趣与个性</h3><span>编辑</span></div>
+            <div class="tag-cloud"><span class="profile-tag">羽毛球</span><span class="profile-tag">城市探索</span><span class="profile-tag">手冲咖啡</span><span class="profile-tag">ENFP</span></div>
+          </section>
+          <section class="profile-section">
+            <div class="section-title"><h3>匹配信息</h3><span>仅匹配可见</span></div>
+            <div class="info-grid"><div class="info-item"><span>常驻区域</span><strong>徐汇 · 静安</strong></div><div class="info-item"><span>空闲时间</span><strong>工作日晚间</strong></div><div class="info-item"><span>偏好人数</span><strong>4–8 人</strong></div><div class="info-item"><span>活动节奏</span><strong>提前计划型</strong></div></div>
+          </section>
+        </div>`
+    };
+
+    const navItems = [
+      ['home', '首页', icons.home], ['match', '搭子', icons.match], ['publish', '发布', icons.plus], ['messages', '消息', icons.message], ['profile', '我的', icons.user]
+    ];
+
+    function renderNav(active) {
+      document.getElementById('bottomNav').innerHTML = navItems.map(([key, label, icon]) => `
+        <button class="nav-item ${key === active ? 'active' : ''} ${key === 'publish' ? 'publish' : ''}" data-screen="${key}">
+          ${key === 'publish' ? `<span class="nav-plus">${icon}</span>` : icon}
+          <span>${label}</span>${key === 'messages' ? '<span class="badge-count">4</span>' : ''}
+        </button>`).join('');
+    }
+
+    function render(screenName) {
+      const name = validScreens.includes(screenName) ? screenName : 'home';
+      document.getElementById('screen').innerHTML = screens[name]();
+      renderNav(name);
+      bindInteractions(name);
+    }
+
+    function bindInteractions(name) {
+      document.querySelectorAll('[data-screen]').forEach(btn => btn.addEventListener('click', () => render(btn.dataset.screen)));
+      if (name === 'home') {
+        document.querySelectorAll('[data-feed]').forEach(btn => btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-feed]').forEach(x => x.classList.remove('active'));
+          btn.classList.add('active');
+          document.querySelector('.topbar .kicker').textContent = btn.dataset.feed === 'city' ? '上海 · 距离优先展示' : '今天也去见点新鲜的人';
+        }));
+        document.getElementById('openFilter').addEventListener('click', () => toggleFilter(true));
+        document.querySelectorAll('.chip').forEach(btn => btn.addEventListener('click', () => btn.classList.toggle('active')));
+      }
+      if (name === 'publish') {
+        document.querySelectorAll('.type-option').forEach(btn => btn.addEventListener('click', () => {
+          document.querySelectorAll('.type-option').forEach(x => x.classList.remove('active')); btn.classList.add('active');
+        }));
+      }
+    }
+
+    function filterMarkup() {
+      return `<section class="filter-sheet" role="dialog" aria-modal="true" aria-label="筛选活动">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title"><h2>筛选活动</h2><button id="resetFilter">重置</button></div>
+        <div class="filter-group"><div class="filter-label">活动类型</div><div class="choice-row"><button class="choice active">全部</button><button class="choice">运动</button><button class="choice">户外</button><button class="choice">桌游</button><button class="choice">看展</button><button class="choice">学习</button></div></div>
+        <div class="filter-group"><div class="filter-label">地点与距离 <span>5 km 内</span></div><div class="choice-row"><button class="choice active">当前位置</button><button class="choice">徐汇</button><button class="choice">静安</button><button class="choice">浦东</button></div><input class="range" type="range" min="1" max="50" value="5" aria-label="活动距离"></div>
+        <div class="filter-group"><div class="filter-label">时间</div><div class="choice-row"><button class="choice active">不限</button><button class="choice">今天</button><button class="choice">本周末</button><button class="choice">下周</button></div></div>
+        <div class="filter-group"><div class="filter-label">活动人数</div><div class="choice-row"><button class="choice">2 人</button><button class="choice active">3–8 人</button><button class="choice">9–20 人</button><button class="choice">20 人以上</button></div></div>
+        <button class="apply-filter" id="applyFilter">查看 36 个活动</button>
+      </section>`;
+    }
+
+    function toggleFilter(open) {
+      const layer = document.getElementById('filterLayer');
+      if (open) {
+        layer.innerHTML = filterMarkup();
+        layer.classList.add('open'); layer.setAttribute('aria-hidden', 'false');
+        layer.querySelectorAll('.choice').forEach(btn => btn.addEventListener('click', () => btn.classList.toggle('active')));
+        layer.addEventListener('click', e => { if (e.target === layer) toggleFilter(false); });
+        document.getElementById('applyFilter').addEventListener('click', () => toggleFilter(false));
+        document.getElementById('resetFilter').addEventListener('click', () => layer.querySelectorAll('.choice').forEach(x => x.classList.remove('active')));
+      } else {
+        layer.classList.remove('open'); layer.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    document.getElementById('filterLayer').innerHTML = '';
+    render(requestedScreen);
+    if (params.get('filter') === 'open' && requestedScreen === 'home') toggleFilter(true);
+  </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+{
+  "product": "搭场",
+  "viewport": { "width": 390, "height": 844 },
+  "themes": {
+    "clear-blue": {
+      "query_value": "blue",
+      "positioning": "清透、可信、克制，最接近 Apple 的信息层级",
+      "brand": "#0A84FF",
+      "brand_soft": "#EAF4FF",
+      "accent": "#FF7A45",
+      "activity": "#0A84FF",
+      "post": "#8A5CF5",
+      "card_radius": 22
+    },
+    "aurora-teal": {
+      "query_value": "teal",
+      "positioning": "科技、呼吸感、秩序，参考蔚来的轻盈气质",
+      "brand": "#00A9B7",
+      "brand_soft": "#E4F9FA",
+      "accent": "#73BF45",
+      "activity": "#00A9B7",
+      "post": "#4267C9",
+      "card_radius": 16
+    },
+    "sunrise-coral": {
+      "query_value": "coral",
+      "positioning": "热情、年轻、行动感，适合城市活动社区",
+      "brand": "#FF694A",
+      "brand_soft": "#FFF0EB",
+      "accent": "#F5AA20",
+      "activity": "#FF694A",
+      "post": "#D84B83",
+      "card_radius": 26
+    },
+    "midnight-red": {
+      "query_value": "midnight",
+      "positioning": "黑红深色、沉浸图片、硬朗层级，适合夜间运动与都市活动",
+      "brand": "#FF304B",
+      "brand_soft": "#3B1119",
+      "accent": "#E9FF32",
+      "activity": "#FF435A",
+      "post": "#C58BFF",
+      "card_radius": 12
+    },
+    "electric-clash": {
+      "query_value": "clash",
+      "positioning": "紫色与荧光绿撞色、海报化模块、粗边框，面向Z世代",
+      "brand": "#713CFF",
+      "brand_soft": "#EAE1FF",
+      "accent": "#C7FF22",
+      "activity": "#713CFF",
+      "post": "#F02C98",
+      "card_radius": 5
+    },
+    "cobalt-pop": {
+      "query_value": "cobalt",
+      "positioning": "钴蓝与亮黄、编辑式编号层级，可信但更具行动感",
+      "brand": "#1746E0",
+      "brand_soft": "#E9EEFF",
+      "accent": "#FFD51F",
+      "activity": "#1746E0",
+      "post": "#EE4B25",
+      "card_radius": 2
+    },
+    "forest-cream": {
+      "query_value": "forest",
+      "positioning": "深绿米白、有机圆角、社区与户外气质，降低陌生人社交压力",
+      "brand": "#145F46",
+      "brand_soft": "#DFEEE1",
+      "accent": "#EF7D57",
+      "activity": "#145F46",
+      "post": "#B65375",
+      "card_radius": 30
+    },
+    "mono-ice": {
+      "query_value": "mono",
+      "positioning": "黑灰冰蓝、玻璃与高密度列表，冷静科技和高端工具感",
+      "brand": "#8EE8FF",
+      "brand_soft": "#17313B",
+      "accent": "#F3F5F7",
+      "activity": "#8EE8FF",
+      "post": "#D4D9E0",
+      "card_radius": 20
+    }
+  },
+  "semantic_rules": {
+    "activity": "使用活动色和圆点标签",
+    "post": "使用动态色和圆点标签",
+    "danger": "#F04444",
+    "ai_generated": "深色半透明标签，文案固定为 AI 生成内容"
+  },
+  "type": {
+    "font_family": "system-ui, PingFang SC",
+    "page_title": 25,
+    "card_title": 17,
+    "body": 14,
+    "caption": 11
+  }
+}
