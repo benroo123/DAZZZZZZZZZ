@@ -38,7 +38,7 @@ def main():
     height = header + rows * (phone_h + 56) + (rows - 1) * gap_y + 30
     canvas = Image.new("RGB", (width, height), "#F1F3F6")
     draw = ImageDraw.Draw(canvas)
-    draw.text((margin, 28), "搭场 · 8 套视觉与界面逻辑", font=font(30), fill="#171A1F")
+    draw.text((margin, 28), "DAZZZZZZZZZ · 8 套视觉与界面逻辑", font=font(30), fill="#171A1F")
     draw.text((margin, 70), "相同功能，不同品牌性格与信息组织方式", font=font(15), fill="#68717B")
     for index, (key, name, logic, color) in enumerate(STYLES):
         row, col = divmod(index, cols)

@@ -31,7 +31,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Dachang Runtime API — Python",
+    title="DAZZZZZZZZZ Runtime API — Python",
     version="0.1.0",
     description="FastAPI parity implementation of the five-tab activity-social vertical slice",
     lifespan=lifespan,

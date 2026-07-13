@@ -87,7 +87,7 @@ configure_minio() {
     > /etc/default/minio
   cat >/etc/systemd/system/minio.service <<'UNIT'
 [Unit]
-Description=Dachang local MinIO object storage
+Description=DAZZZZZZZZZ local MinIO object storage
 After=network-online.target
 Wants=network-online.target
 

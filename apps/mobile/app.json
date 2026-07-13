@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "搭场",
-    "slug": "dachang",
+    "name": "DAZZZZZZZZZ",
+    "slug": "dazzzzzzzzz",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -11,10 +11,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.dachang.app"
+      "bundleIdentifier": "com.dazzzzzzzzz.app"
     },
     "android": {
-      "package": "com.dachang.app",
+      "package": "com.dazzzzzzzzz.app",
       "adaptiveIcon": {
         "backgroundColor": "#0A84FF"
       }

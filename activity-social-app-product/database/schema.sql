@@ -1,4 +1,4 @@
--- 搭场 PostgreSQL 16 + PostGIS schema baseline
+-- DAZZZZZZZZZ PostgreSQL 16 + PostGIS schema baseline
 -- Sensitive values such as phone numbers and identity references must be encrypted
 -- by the application with KMS-backed envelope encryption.
 
@@ -603,4 +603,3 @@ CREATE TABLE audit_logs (
 );
 CREATE INDEX audit_resource_idx ON audit_logs (resource_type, resource_id, occurred_at DESC);
 CREATE INDEX audit_actor_idx ON audit_logs (actor_type, actor_id, occurred_at DESC);
-

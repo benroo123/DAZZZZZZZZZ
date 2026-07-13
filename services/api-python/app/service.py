@@ -878,7 +878,7 @@ class Service:
 
     def agent_manifest(self) -> dict[str, Any]:
         return {
-            "name": "Dachang Agent Gateway",
+            "name": "DAZZZZZZZZZ Agent Gateway",
             "version": "0.1.0",
             "protocol": "typed-tools-v1",
             "identity": {"delegatedScopes": True, "shortLivedTokens": True},

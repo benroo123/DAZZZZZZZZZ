@@ -747,7 +747,7 @@ export class AppService {
 
   async agentManifest(): Promise<Row> {
     return {
-      name: 'Dachang Agent Gateway',
+      name: 'DAZZZZZZZZZ Agent Gateway',
       version: '0.1.0',
       protocol: 'typed-tools-v1',
       identity: { delegatedScopes: true, shortLivedTokens: true },

@@ -2,11 +2,11 @@
 
 所有外部 Webhook 使用 HTTPS，JSON 正文，至少一次投递。请求头包含：
 
-- `X-Dachang-Event-Id`
-- `X-Dachang-Event-Type`
-- `X-Dachang-Event-Version`
-- `X-Dachang-Timestamp`
-- `X-Dachang-Signature: v1=<HMAC-SHA256>`
+- `X-DAZZZZZZZZZ-Event-Id`
+- `X-DAZZZZZZZZZ-Event-Type`
+- `X-DAZZZZZZZZZ-Event-Version`
+- `X-DAZZZZZZZZZ-Timestamp`
+- `X-DAZZZZZZZZZ-Signature: v1=<HMAC-SHA256>`
 
 消费者应以 `event_id` 幂等去重，先校验时间窗口和签名，再处理正文。2xx 视为成功；失败按指数退避，达到阈值进入死信并暂停异常端点。
 
@@ -58,4 +58,3 @@ Webhook 数据是面向订阅者的最小投影，不等于内部 Outbox 全量 
 ## 版本策略
 
 新增可选字段不提升大版本；删除/改名/语义变化发布新的 `event_version`。消费者声明支持版本范围，平台在迁移窗口内并行发送旧版和新版。内部事件不可直接当作公共 Webhook，避免未来领域重构破坏合作方。
-

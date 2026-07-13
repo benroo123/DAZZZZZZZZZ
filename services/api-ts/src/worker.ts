@@ -40,7 +40,7 @@ function generatedCover(prompt: string): Buffer {
   <rect width="1200" height="900" fill="url(#g)"/>
   <circle cx="1010" cy="170" r="210" fill="#C7FF22" opacity=".82"/>
   <circle cx="170" cy="760" r="260" fill="#8EE8FF" opacity=".32"/>
-  <text x="80" y="92" fill="#fff" font-family="system-ui,sans-serif" font-size="30" font-weight="700">搭场 · AI 活动封面</text>
+  <text x="80" y="92" fill="#fff" font-family="system-ui,sans-serif" font-size="30" font-weight="700">DAZZZZZZZZZ · AI 活动封面</text>
   <text x="80" y="470" fill="#fff" font-family="system-ui,sans-serif" font-size="62" font-weight="800">${title}</text>
   <text x="80" y="535" fill="#fff" opacity=".82" font-family="system-ui,sans-serif" font-size="28">让想法成为一次真实见面</text>
   <rect x="80" y="720" rx="24" width="205" height="58" fill="#000" opacity=".45"/>

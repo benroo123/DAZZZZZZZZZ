@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
     decorateReply: false,
   });
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Dachang Runtime API — TypeScript')
+    .setTitle('DAZZZZZZZZZ Runtime API — TypeScript')
     .setDescription('Runnable five-tab activity-social vertical slice')
     .setVersion('0.1.0')
     .addBearerAuth()

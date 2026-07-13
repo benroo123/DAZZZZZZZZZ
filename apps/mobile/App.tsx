@@ -150,7 +150,7 @@ function HomeScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles }
       <View style={styles.brandRow}>
         <View>
           <Text style={styles.eyebrow}>一起，真的去做点什么</Text>
-          <Text style={styles.brandTitle}>搭场</Text>
+          <Text style={styles.brandTitle}>DAZZZZZZZZZ</Text>
         </View>
         <View style={styles.aiBadge}>
           <Text style={styles.aiBadgeText}>AI 原生</Text>

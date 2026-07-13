@@ -55,7 +55,7 @@ def main():
         draw = ImageDraw.Draw(canvas)
         draw.text((side, 34), title, font=font(30), fill="#16191D")
         draw.rounded_rectangle((side, 78, side + 72, 85), radius=4, fill=color)
-        draw.text((canvas_w - side - 250, 42), "搭场 Mobile UI System", font=font(15), fill="#6B727A")
+        draw.text((canvas_w - side - 250, 42), "DAZZZZZZZZZ Mobile UI System", font=font(15), fill="#6B727A")
         for idx, (screen, label) in enumerate(SCREENS):
             source = Image.open(ROOT / "screens" / key / f"{screen}.png").convert("RGB")
             source = source.resize((phone_w, phone_h), Image.Resampling.LANCZOS)
