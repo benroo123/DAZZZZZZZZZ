@@ -16,12 +16,14 @@ class Settings:
     port: int = integer("PY_API_PORT", 8100)
     public_base_url: str = getenv("PY_PUBLIC_BASE_URL", "http://127.0.0.1:8100")
     database_url: str = getenv(
-        "DATABASE_URL", "postgresql://dachang:dachang@127.0.0.1:55432/dachang"
+        "DATABASE_URL", "postgresql://dachang:dachang@127.0.0.1:5432/dachang"
     )
-    redis_url: str = getenv("REDIS_URL", "redis://127.0.0.1:56379/0")
-    rabbitmq_url: str = getenv("RABBITMQ_URL", "amqp://dachang:dachang@127.0.0.1:5673")
+    redis_url: str = getenv("REDIS_URL", "redis://:dachang@127.0.0.1:6379/0")
+    rabbitmq_url: str = getenv(
+        "RABBITMQ_URL", "amqp://dachang:dachang@127.0.0.1:5672"
+    )
     s3_endpoint: str = getenv("S3_ENDPOINT", "127.0.0.1")
-    s3_port: int = integer("S3_PORT", 59000)
+    s3_port: int = integer("S3_PORT", 9000)
     s3_access_key: str = getenv("S3_ACCESS_KEY", "dachang")
     s3_secret_key: str = getenv("S3_SECRET_KEY", "dachang-local-secret")
     s3_bucket: str = getenv("S3_BUCKET", "media")

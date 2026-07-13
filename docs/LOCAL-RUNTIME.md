@@ -6,15 +6,21 @@
 flowchart LR
   App["Expo 移动 App"] --> API["NestJS API :3100"]
   App -. "切换 API_BASE_URL" .-> PyAPI["FastAPI :8100"]
-  API --> PG[("PostgreSQL + PostGIS")]
+  subgraph OrbStack["OrbStack machine: dachang-dev"]
+    PG[("PostgreSQL + PostGIS")]
+    Redis[(Redis)]
+    S3[("MinIO / S3")]
+    MQ[(RabbitMQ)]
+  end
+  API --> PG
   PyAPI --> PG
-  API --> Redis[(Redis)]
+  API --> Redis
   PyAPI --> Redis
-  API --> S3[("MinIO / S3")]
+  API --> S3
   PyAPI --> S3
   API --> Outbox["Transactional Outbox"]
   PyAPI --> Outbox
-  Outbox --> MQ[(RabbitMQ)]
+  Outbox --> MQ
   MQ --> TSWorker["TS Worker"]
   MQ --> PyWorker["Python Worker"]
   TSWorker --> S3
@@ -27,14 +33,14 @@ flowchart LR
 
 两套 API 共用一个数据库，但使用独立的 RabbitMQ 路由键与队列，便于并行做接口等价性测试。生产环境二选一即可；推荐 TypeScript 作为业务主后端，Python 保留给模型编排、离线任务或快速实验。
 
-## 一键基础设施
+## OrbStack 原生基础设施
 
 ```bash
 npm run infra:up
-docker compose ps
+npm run infra:status
 ```
 
-首次创建数据卷会依次执行：
+首次运行会创建 `dachang-dev` Ubuntu 24.04 machine，并在其中以 systemd 服务直接运行 PostgreSQL/PostGIS、Redis、RabbitMQ 和 MinIO。初始化数据库时依次执行：
 
 1. `activity-social-app-product/database/schema.sql`
 2. `infra/db/002-runtime.sql`
@@ -46,11 +52,17 @@ docker compose ps
 npm run infra:reset
 ```
 
-该命令会删除本仓库 Docker Compose 创建的数据卷，只用于本地开发数据。
+该命令会清空 OrbStack machine 内的本地数据库、Redis、RabbitMQ 队列和 MinIO 对象，只用于开发数据。machine 自身会保留，因此后续启动不需要重复安装系统包。
+
+停止全部基础设施并关闭 machine：
+
+```bash
+npm run infra:down
+```
 
 ## 环境变量
 
-默认值已经能在本机直接运行。需要连接远端模型或替换基础设施时，复制 `.env.example` 为 `.env` 并修改。主要变量：
+OrbStack 会把 machine 内监听的端口自动转发到 macOS 的 `127.0.0.1`。根目录启动脚本会自动注入标准端口变量，并在存在 `.env` 时先加载它；需要连接远端模型或替换基础设施时，可复制 `.env.example` 后修改。主要变量：
 
 - `DATABASE_URL`
 - `REDIS_URL`
@@ -81,7 +93,8 @@ npm run test:all
 ## 常见问题
 
 - 本机统一使用 `127.0.0.1`，不要使用 `localhost`；部分公司网络会重写 `localhost` DNS。
+- 中间件统一使用 OrbStack 转发的 `127.0.0.1` 标准端口；不要把 machine 的临时 IP 写进配置。
 - 真机上的 `127.0.0.1` 指手机自身，需要使用电脑局域网 IP。
-- 更换数据库 SQL 后，已有数据卷不会自动重新跑初始化脚本；本地可执行 `npm run infra:reset`。
+- 更换数据库 SQL 后，已有数据库不会自动重新跑初始化脚本；本地可执行 `npm run infra:reset`。
 - 发布停在 `pending_review` 时，先确认对应 Worker 正在运行，再看 RabbitMQ 的 retry/dead 队列。
 - 对象上传先进入 `quarantine/`，调用 complete 后才由 Worker 完成检查并标为 `approved`。

@@ -87,6 +87,6 @@ for (const backend of backends) {
       () => api<{ moderationStatus: string; url: string }>(`${backend.baseUrl}/media/${upload.mediaId}`),
       (asset) => asset.moderationStatus === 'approved',
     );
-    expect(media.url).toContain('127.0.0.1:59000');
+    expect(media.url).toContain('127.0.0.1:9000');
   });
 }

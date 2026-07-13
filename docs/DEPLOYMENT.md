@@ -5,7 +5,7 @@
 - **Expo / EAS**：构建和发布 iOS、Android App。
 - **Vercel**：品牌官网、运营后台、管理控制台。长连接 API 和持续消费 MQ 的 Worker 不放进短生命周期 Serverless Function。
 - **Supabase**：托管 PostgreSQL/PostGIS，后续接 Supabase Auth；对象存储通过当前 S3 适配层替换 MinIO。
-- **Kubernetes 或托管容器平台**：运行无状态 API Pod 和独立 Worker Pod。
+- **Kubernetes 或托管应用平台**：运行无状态 API Pod 和独立 Worker Pod；使用 Buildpacks/Nixpacks 从源码生成 OCI 交付物，不维护手写镜像构建文件。
 - **托管 Redis / RabbitMQ**：缓存、限流、实时状态、异步任务和死信处理。
 
 ## 多 Pod 已做的准备
@@ -18,6 +18,8 @@
 6. 创建帖子支持 `Idempotency-Key`，移动网络重试不会生成重复资源。
 7. `/v1/system/health` 检查 PostgreSQL、Redis、RabbitMQ、对象存储；`/v1/metrics` 输出 Prometheus 指标。
 8. 每个请求返回 `x-correlation-id`，API/Worker 输出结构化 JSON 日志。
+
+本地开发使用 OrbStack 原生 Ubuntu machine 和 systemd 服务，与生产 Pod 的编排方式解耦。生产发布建议由 CI 运行 Buildpacks，开发电脑不需要本地镜像构建链路。
 
 ## 建议的 Pod 拆分
 

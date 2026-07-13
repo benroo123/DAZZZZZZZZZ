@@ -12,7 +12,7 @@
 - 资料：照片入口、年龄和匹配资料、资料完整度、到场率、信用评分。
 - 八套完整主题：清透蓝、极光青、日出橙、午夜红、电光撞色、钴蓝波普、森林米白、黑灰冰蓝。
 - 两套等价后端：NestJS + TypeScript（推荐主版本）和 FastAPI + Python（模型/数据团队友好版本）。
-- PostgreSQL/PostGIS、Redis、RabbitMQ、MinIO、Transactional Outbox、重试队列、死信队列、幂等键和 Agent 工具协议。
+- OrbStack 原生 Linux 服务：PostgreSQL/PostGIS、Redis、RabbitMQ、MinIO，以及 Transactional Outbox、重试队列、死信队列、幂等键和 Agent 工具协议。
 
 ## 目录
 
@@ -22,13 +22,14 @@
 | `services/api-ts` | 推荐主后端和异步 Worker |
 | `services/api-python` | Python 等价 API 和异步 Worker |
 | `infra/db` | 运行时迁移与演示种子数据 |
+| `scripts/orbstack` | 创建 OrbStack Ubuntu machine，并以 systemd 管理全部基础设施 |
 | `packages/contracts` | 两端共享的接口说明与八套主题 Token |
 | `tests/e2e` | 两套 API、MQ、对象存储和五页签端到端测试 |
 | `activity-social-app-product` | 产品规格、完整 OpenAPI、115 个操作、表设计、Agent 方案和 41 张原型图 |
 
 ## 最快启动
 
-前置依赖：Docker、Node.js 22+、Python 3.12+。
+前置依赖：OrbStack 2+、Node.js 22+、Python 3.12+。
 
 ```bash
 cd /Users/benroo.liu/Documents/trae_projects/DAZZZZZZZZZ
@@ -47,8 +48,8 @@ npm run dev:ts
 npm run worker:ts
 
 # Python 等价后端
-cd services/api-python && .venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8100
-cd services/api-python && .venv/bin/python -m app.worker
+npm run dev:python
+npm run worker:python
 
 # 移动端本地测试面
 npm run dev:mobile
@@ -59,8 +60,10 @@ npm run dev:mobile
 - 移动端测试面：<http://127.0.0.1:19006>
 - TypeScript API：<http://127.0.0.1:3100/v1/docs>
 - Python API：<http://127.0.0.1:8100/v1/docs>
-- RabbitMQ 控制台：<http://127.0.0.1:15673>（`dachang / dachang`）
-- MinIO 控制台：<http://127.0.0.1:59001>（`dachang / dachang-local-secret`）
+- RabbitMQ 控制台：<http://127.0.0.1:15672>（`dachang / dachang`）
+- MinIO 控制台：<http://127.0.0.1:9001>（`dachang / dachang-local-secret`）
+
+`npm run infra:up` 首次会创建名为 `dachang-dev` 的 Ubuntu 24.04 machine，在其中直接安装并运行四个 systemd 服务。可用 `npm run infra:status` 查看状态，`npm run infra:down` 停止 machine。
 
 本地演示鉴权为 `Authorization: Bearer demo-user`。真机不能用 `127.0.0.1` 访问电脑，扫码前要设置局域网地址：
 
