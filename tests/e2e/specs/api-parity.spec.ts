@@ -9,6 +9,7 @@ const headers = {
   Authorization: 'Bearer demo-user',
   'content-type': 'application/json',
 };
+const authHeaders = { Authorization: 'Bearer demo-user' };
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { ...headers, ...(init?.headers ?? {}) } });
@@ -70,6 +71,55 @@ for (const backend of backends) {
 
     const tools = await json<{ tools: unknown[] }>(`${backend.baseUrl}/agent/tools`);
     expect(tools.tools.length).toBeGreaterThan(10);
+  });
+
+  test(`${backend.name} persists silent blocks and enforces them across product surfaces`, async () => {
+    const conversations = await json<{
+      items: Array<{ id: string; type: string; peerUserId?: string | null }>;
+    }>(`${backend.baseUrl}/conversations`);
+    const direct = conversations.items.find((item) => item.type === 'direct' && item.peerUserId);
+    expect(direct).toBeTruthy();
+    const peerUserId = direct!.peerUserId!;
+
+    await fetch(`${backend.baseUrl}/users/${peerUserId}/block`, { method: 'DELETE', headers: authHeaders });
+    try {
+      const before = await json<{ items: Array<{ title: string }> }>(`${backend.baseUrl}/feed`);
+      expect(before.items.some((item) => item.title.includes('林夏') || item.title.includes('Citywalk'))).toBe(true);
+
+      const result = await json<{ accepted: boolean; mode: string; notified: boolean }>(
+        `${backend.baseUrl}/users/${peerUserId}/block`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ mode: 'silent', reason_code: 'e2e_safety_test' }),
+        },
+      );
+      expect(result).toMatchObject({ accepted: true, mode: 'silent', notified: false });
+
+      const blocks = await json<{ items: Array<{ id: string; mode: string }> }>(`${backend.baseUrl}/me/blocks`);
+      expect(blocks.items).toContainEqual(expect.objectContaining({ id: peerUserId, mode: 'silent' }));
+
+      const blockedMessage = await fetch(`${backend.baseUrl}/conversations/${direct!.id}/messages`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ text: '这条消息必须被服务端拦截', clientMessageId: `blocked-${Date.now()}` }),
+      });
+      expect(blockedMessage.status).toBe(409);
+
+      const feed = await json<{ items: Array<{ title: string }> }>(`${backend.baseUrl}/feed`);
+      expect(feed.items.some((item) => item.title.includes('林夏') || item.title.includes('Citywalk'))).toBe(false);
+
+      const candidates = await json<{ items: Array<{ id: string }> }>(`${backend.baseUrl}/matching/candidates`);
+      expect(candidates.items.some((item) => item.id === peerUserId)).toBe(false);
+    } finally {
+      const response = await fetch(`${backend.baseUrl}/users/${peerUserId}/block`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      expect(response.status).toBe(204);
+    }
+
+    const restored = await json<{ items: Array<{ title: string }> }>(`${backend.baseUrl}/feed`);
+    expect(restored.items.some((item) => item.title.includes('林夏') || item.title.includes('Citywalk'))).toBe(true);
   });
 }
 

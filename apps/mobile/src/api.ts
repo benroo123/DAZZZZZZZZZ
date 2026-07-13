@@ -54,6 +54,7 @@ export type Conversation = {
   title: string;
   lastMessage?: string;
   lastMessageAt?: string;
+  peerUserId?: string | null;
 };
 
 export type Message = {
@@ -110,6 +111,14 @@ export const api = {
     request<{ items: Conversation[]; social: { following: number; followers: number } }>(
       '/conversations',
     ),
+  blocks: () => request<{ items: Array<{ id: string; mode: 'standard' | 'silent' }> }>('/me/blocks'),
+  blockUser: (userId: string) =>
+    request<{ accepted: boolean; notified: boolean }>(`/users/${userId}/block`, {
+      method: 'POST',
+      body: JSON.stringify({ mode: 'silent', reason_code: 'user_choice' }),
+    }),
+  unblockUser: (userId: string) =>
+    request<void>(`/users/${userId}/block`, { method: 'DELETE' }),
   messages: (conversationId: string) =>
     request<{ items: Message[] }>(`/conversations/${conversationId}/messages`),
   sendMessage: (conversationId: string, text: string) =>

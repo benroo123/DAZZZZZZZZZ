@@ -76,8 +76,10 @@ class Service:
             ]
         )
 
-    def feed(self, mode: str = "recommended", city_code: str = "310100") -> dict[str, Any]:
-        cache_key = f"feed:{settings.implementation}:{mode}:{city_code}"
+    def feed(
+        self, user_id: str, mode: str = "recommended", city_code: str = "310100"
+    ) -> dict[str, Any]:
+        cache_key = f"feed:{settings.implementation}:{user_id}:{mode}:{city_code}"
         if cached := infra.redis.get(cache_key):
             return json.loads(cached)
         with infra.connection() as connection:
@@ -97,9 +99,12 @@ class Service:
                   where am.activity_id = a.id order by am.position limit 1
                 ) image on true
                 where a.status in ('published', 'full') and (%s <> 'city' or a.city_code = %s)
+                  and not exists (select 1 from app.blocks b where
+                    (b.blocker_id = %s and b.blocked_id = a.organizer_id)
+                    or (b.blocker_id = a.organizer_id and b.blocked_id = %s))
                 order by a.published_at desc limit 30
                 """,
-                (mode, city_code),
+                (mode, city_code, user_id, user_id),
             ).fetchall()
             posts = connection.execute(
                 """
@@ -116,9 +121,12 @@ class Service:
                 ) image on true
                 where post.status = 'published' and post.visibility = 'public'
                   and (%s <> 'city' or post.city_code = %s)
+                  and not exists (select 1 from app.blocks b where
+                    (b.blocker_id = %s and b.blocked_id = post.author_id)
+                    or (b.blocker_id = post.author_id and b.blocked_id = %s))
                 order by post.published_at desc limit 30
                 """,
-                (mode, city_code),
+                (mode, city_code, user_id, user_id),
             ).fetchall()
         items: list[dict[str, Any]] = []
         for row in activities:
@@ -161,14 +169,14 @@ class Service:
         infra.redis.setex(cache_key, 10, json.dumps(response, default=str, ensure_ascii=False))
         return response
 
-    def search(self, query: str, types: str | None) -> dict[str, Any]:
+    def search(self, user_id: str, query: str, types: str | None) -> dict[str, Any]:
         needle = query.strip().lower()
         selected = set((types or "activity,post,user,place").split(","))
         items: list[dict[str, Any]] = []
         if "activity" in selected or "post" in selected:
             items.extend(
                 item
-                for item in self.feed()["items"]
+                for item in self.feed(user_id)["items"]
                 if item["entityType"] in selected
                 and needle
                 in " ".join(
@@ -187,9 +195,14 @@ class Service:
                       join app.media_assets ma on ma.id = pp.media_asset_id
                       where pp.user_id = u.id order by pp.is_primary desc, pp.position limit 1
                     ) ph on true
-                    where p.display_name ilike %s or u.public_id ilike %s limit 20
+                    where (p.display_name ilike %s or u.public_id ilike %s)
+                      and u.id <> %s
+                      and not exists (select 1 from app.blocks b where
+                        (b.blocker_id = %s and b.blocked_id = u.id)
+                        or (b.blocker_id = u.id and b.blocked_id = %s))
+                    limit 20
                     """,
-                    (f"%{query}%", f"%{query}%"),
+                    (f"%{query}%", f"%{query}%", user_id, user_id, user_id),
                 ).fetchall()
                 items.extend(
                     {
@@ -207,8 +220,14 @@ class Service:
                 items.extend({"entityType": "place", **row, "cityCode": "310100"} for row in rows)
         return {"items": items, "nextCursor": None}
 
-    def nearby(self, city_code: str, categories: str | None, participant_max: int) -> dict[str, Any]:
-        items = [item for item in self.feed("city", city_code)["items"] if item["entityType"] == "activity"]
+    def nearby(
+        self, user_id: str, city_code: str, categories: str | None, participant_max: int
+    ) -> dict[str, Any]:
+        items = [
+            item
+            for item in self.feed(user_id, "city", city_code)["items"]
+            if item["entityType"] == "activity"
+        ]
         if categories:
             allowed = set(categories.split(","))
             items = [item for item in items if item.get("category") in allowed]
@@ -330,14 +349,20 @@ class Service:
             rows = connection.execute(
                 """
                 select c.id, c.type, c.title, c.last_message_at as "lastMessageAt",
-                  coalesce(convert_from(m.body_ciphertext, 'UTF8'), m.payload->>'text', '') as "lastMessage"
+                  coalesce(convert_from(m.body_ciphertext, 'UTF8'), m.payload->>'text', '') as "lastMessage",
+                  case when c.type = 'direct' then peer.user_id end as "peerUserId"
                 from app.conversations c
                 join app.conversation_members cm on cm.conversation_id = c.id
                   and cm.user_id = %s and cm.left_at is null
                 left join app.messages m on m.id = c.last_message_id
+                left join lateral (
+                  select other.user_id from app.conversation_members other
+                  where other.conversation_id = c.id and other.user_id <> %s and other.left_at is null
+                  order by other.joined_at limit 1
+                ) peer on true
                 order by c.last_message_at desc nulls last
                 """,
-                (user_id,),
+                (user_id, user_id),
             ).fetchall()
         profile = self.profile(user_id)
         return {
@@ -361,10 +386,66 @@ class Service:
             ).fetchall()
         return {"items": rows, "nextCursor": None}
 
+    def block_user(
+        self, user_id: str, target_user_id: str, mode: str, reason_code: str | None
+    ) -> dict[str, Any]:
+        if user_id == target_user_id:
+            raise HTTPException(409, "Cannot block yourself")
+        with infra.connection() as connection:
+            target = connection.execute(
+                "select 1 from app.users where id = %s and deleted_at is null", (target_user_id,)
+            ).fetchone()
+            if not target:
+                raise HTTPException(404, "User not found")
+            connection.execute(
+                """
+                insert into app.blocks (blocker_id, blocked_id, mode, reason_code)
+                values (%s, %s, %s, %s)
+                on conflict (blocker_id, blocked_id)
+                  do update set mode = excluded.mode, reason_code = excluded.reason_code
+                """,
+                (user_id, target_user_id, mode, reason_code),
+            )
+        self._invalidate_discovery_cache(user_id, target_user_id)
+        return {"accepted": True, "userId": target_user_id, "mode": mode, "notified": False}
+
+    def unblock_user(self, user_id: str, target_user_id: str) -> None:
+        with infra.connection() as connection:
+            connection.execute(
+                "delete from app.blocks where blocker_id = %s and blocked_id = %s",
+                (user_id, target_user_id),
+            )
+        self._invalidate_discovery_cache(user_id, target_user_id)
+
+    def blocks(self, user_id: str) -> dict[str, Any]:
+        with infra.connection() as connection:
+            rows = connection.execute(
+                """
+                select b.blocked_id as id, b.mode, b.reason_code as "reasonCode",
+                  b.created_at as "createdAt", p.display_name as "displayName", u.public_id as "publicId"
+                from app.blocks b join app.users u on u.id = b.blocked_id
+                join app.profiles p on p.user_id = b.blocked_id
+                where b.blocker_id = %s order by b.created_at desc
+                """,
+                (user_id,),
+            ).fetchall()
+        return {"items": rows, "nextCursor": None}
+
     def send_message(self, user_id: str, conversation_id: str, text: str, client_id: str) -> dict[str, Any]:
         self._assert_member(user_id, conversation_id)
         message_id = str(uuid4())
         with infra.connection() as connection:
+            blocked = connection.execute(
+                """
+                select 1 from app.conversation_members other join app.blocks b
+                  on ((b.blocker_id = %s and b.blocked_id = other.user_id)
+                   or (b.blocker_id = other.user_id and b.blocked_id = %s))
+                where other.conversation_id = %s and other.user_id <> %s and other.left_at is null limit 1
+                """,
+                (user_id, user_id, conversation_id, user_id),
+            ).fetchone()
+            if blocked:
+                raise HTTPException(409, "Messaging is unavailable for this conversation")
             row = connection.execute(
                 """
                 insert into app.messages
@@ -381,7 +462,13 @@ class Service:
                 "update app.conversations set last_message_id = %s, last_message_at = now() where id = %s",
                 (row["id"], conversation_id),
             )
-        return row
+            return row
+
+    def _invalidate_discovery_cache(self, *user_ids: str) -> None:
+        for user_id in set(user_ids):
+            keys = list(infra.redis.scan_iter(f"feed:{settings.implementation}:{user_id}:*"))
+            if keys:
+                infra.redis.delete(*keys)
 
     def create_media_upload(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         media_id, upload_id = str(uuid4()), str(uuid4())

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   Headers,
@@ -53,19 +54,19 @@ export class AppController {
   }
 
   @Get('feed')
-  feed(@Query('mode') mode?: string, @Query('cityCode') cityCode?: string) {
-    return this.service.feed(mode, cityCode);
+  feed(@Req() request: any, @Query('mode') mode?: string, @Query('cityCode') cityCode?: string) {
+    return this.service.feed(request.userId, mode, cityCode);
   }
 
   @Get('search')
-  search(@Query('q') q?: string, @Query('types') types?: string) {
+  search(@Req() request: any, @Query('q') q?: string, @Query('types') types?: string) {
     if (!q?.trim()) throw new BadRequestException('q is required');
-    return this.service.search(q, types);
+    return this.service.search(request.userId, q, types);
   }
 
   @Get('activities/nearby')
-  nearby(@Query() filters: Record<string, unknown>) {
-    return this.service.nearbyActivities(filters);
+  nearby(@Req() request: any, @Query() filters: Record<string, unknown>) {
+    return this.service.nearbyActivities(request.userId, filters);
   }
 
   @Get('me/profile')
@@ -92,6 +93,28 @@ export class AppController {
   @Get('conversations')
   conversations(@Req() request: any) {
     return this.service.conversations(request.userId);
+  }
+
+  @Post('users/:userId/block')
+  blockUser(
+    @Req() request: any,
+    @Param('userId') userId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    const mode = body.mode === 'silent' ? 'silent' : 'standard';
+    const reasonCode = body.reason_code ?? body.reasonCode;
+    return this.service.blockUser(request.userId, userId, mode, reasonCode ? String(reasonCode) : null);
+  }
+
+  @HttpCode(204)
+  @Delete('users/:userId/block')
+  async unblockUser(@Req() request: any, @Param('userId') userId: string) {
+    await this.service.unblockUser(request.userId, userId);
+  }
+
+  @Get('me/blocks')
+  blocks(@Req() request: any) {
+    return this.service.blocks(request.userId);
   }
 
   @Get('conversations/:conversationId/messages')

@@ -68,8 +68,8 @@ export class AppService {
     ].join('\n');
   }
 
-  async feed(mode = 'recommended', cityCode = '310100'): Promise<{ items: Row[]; nextCursor: null }> {
-    const cacheKey = `feed:${config.implementation}:${mode}:${cityCode}`;
+  async feed(userId: string, mode = 'recommended', cityCode = '310100'): Promise<{ items: Row[]; nextCursor: null }> {
+    const cacheKey = `feed:${config.implementation}:${userId}:${mode}:${cityCode}`;
     const cached = await this.infra.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
@@ -88,8 +88,11 @@ export class AppService {
          where am.activity_id = a.id order by am.position limit 1
        ) image on true
        where a.status in ('published', 'full') and ($1::text <> 'city' or a.city_code = $2)
+         and not exists (select 1 from app.blocks b where
+           (b.blocker_id = $3 and b.blocked_id = a.organizer_id)
+           or (b.blocker_id = a.organizer_id and b.blocked_id = $3))
        order by a.published_at desc limit 30`,
-      [mode, cityCode],
+      [mode, cityCode, userId],
     );
     const postResult = await this.infra.pool.query(
       `select post.id, post.body, post.published_at as "publishedAt",
@@ -105,8 +108,11 @@ export class AppService {
        ) image on true
        where post.status = 'published' and post.visibility = 'public'
          and ($1::text <> 'city' or post.city_code = $2)
+         and not exists (select 1 from app.blocks b where
+           (b.blocker_id = $3 and b.blocked_id = post.author_id)
+           or (b.blocker_id = post.author_id and b.blocked_id = $3))
        order by post.published_at desc limit 30`,
-      [mode, cityCode],
+      [mode, cityCode, userId],
     );
 
     const activities = await Promise.all(
@@ -152,13 +158,13 @@ export class AppService {
     return response;
   }
 
-  async search(q: string, types?: string): Promise<{ items: Row[]; nextCursor: null }> {
+  async search(userId: string, q: string, types?: string): Promise<{ items: Row[]; nextCursor: null }> {
     const needle = q.trim().toLocaleLowerCase('zh-CN');
     if (!needle) return { items: [], nextCursor: null };
     const selected = new Set((types ?? 'activity,post,user,place').split(','));
     const items: Row[] = [];
     if (selected.has('activity') || selected.has('post')) {
-      const feed = await this.feed('recommended');
+      const feed = await this.feed(userId, 'recommended');
       items.push(
         ...feed.items.filter(
           (item) =>
@@ -179,8 +185,13 @@ export class AppService {
            join app.media_assets ma on ma.id = pp.media_asset_id
            where pp.user_id = u.id order by pp.is_primary desc, pp.position limit 1
          ) ph on true
-         where p.display_name ilike $1 or u.public_id ilike $1 limit 20`,
-        [`%${q}%`],
+         where (p.display_name ilike $1 or u.public_id ilike $1)
+           and u.id <> $2
+           and not exists (select 1 from app.blocks b where
+             (b.blocker_id = $2 and b.blocked_id = u.id)
+             or (b.blocker_id = u.id and b.blocked_id = $2))
+         limit 20`,
+        [`%${q}%`, userId],
       );
       for (const row of users.rows) {
         items.push({
@@ -201,8 +212,8 @@ export class AppService {
     return { items, nextCursor: null };
   }
 
-  async nearbyActivities(filters: Record<string, unknown>): Promise<{ items: Row[]; nextCursor: null }> {
-    const response = await this.feed('city', String(filters.cityCode ?? '310100'));
+  async nearbyActivities(userId: string, filters: Record<string, unknown>): Promise<{ items: Row[]; nextCursor: null }> {
+    const response = await this.feed(userId, 'city', String(filters.cityCode ?? '310100'));
     let items = response.items.filter((item) => item.entityType === 'activity');
     if (filters.categories) {
       const categories = String(filters.categories).split(',');
@@ -311,10 +322,16 @@ export class AppService {
   async conversations(userId: string): Promise<{ items: Row[]; nextCursor: null; social: Row }> {
     const result = await this.infra.pool.query(
       `select c.id, c.type, c.title, c.last_message_at as "lastMessageAt",
-              coalesce(convert_from(m.body_ciphertext, 'UTF8'), m.payload->>'text', '') as "lastMessage"
+              coalesce(convert_from(m.body_ciphertext, 'UTF8'), m.payload->>'text', '') as "lastMessage",
+              case when c.type = 'direct' then peer.user_id end as "peerUserId"
        from app.conversations c
        join app.conversation_members cm on cm.conversation_id = c.id and cm.user_id = $1 and cm.left_at is null
        left join app.messages m on m.id = c.last_message_id
+       left join lateral (
+         select other.user_id from app.conversation_members other
+         where other.conversation_id = c.id and other.user_id <> $1 and other.left_at is null
+         order by other.joined_at limit 1
+       ) peer on true
        order by c.last_message_at desc nulls last`,
       [userId],
     );
@@ -339,8 +356,47 @@ export class AppService {
     return { items: result.rows, nextCursor: null };
   }
 
+  async blockUser(userId: string, targetUserId: string, mode: 'standard' | 'silent', reasonCode: string | null): Promise<Row> {
+    if (userId === targetUserId) throw new ConflictException('Cannot block yourself');
+    const target = await this.infra.pool.query(`select 1 from app.users where id = $1 and deleted_at is null`, [targetUserId]);
+    if (!target.rowCount) throw new NotFoundException('User not found');
+    await this.infra.pool.query(
+      `insert into app.blocks (blocker_id, blocked_id, mode, reason_code)
+       values ($1, $2, $3, $4)
+       on conflict (blocker_id, blocked_id) do update set mode = excluded.mode, reason_code = excluded.reason_code`,
+      [userId, targetUserId, mode, reasonCode],
+    );
+    await this.invalidateDiscoveryCache(userId, targetUserId);
+    return { accepted: true, userId: targetUserId, mode, notified: false };
+  }
+
+  async unblockUser(userId: string, targetUserId: string): Promise<void> {
+    await this.infra.pool.query(`delete from app.blocks where blocker_id = $1 and blocked_id = $2`, [userId, targetUserId]);
+    await this.invalidateDiscoveryCache(userId, targetUserId);
+  }
+
+  async blocks(userId: string): Promise<{ items: Row[]; nextCursor: null }> {
+    const result = await this.infra.pool.query(
+      `select b.blocked_id as id, b.mode, b.reason_code as "reasonCode", b.created_at as "createdAt",
+              p.display_name as "displayName", u.public_id as "publicId"
+       from app.blocks b join app.users u on u.id = b.blocked_id
+       join app.profiles p on p.user_id = b.blocked_id
+       where b.blocker_id = $1 order by b.created_at desc`,
+      [userId],
+    );
+    return { items: result.rows, nextCursor: null };
+  }
+
   async sendMessage(userId: string, conversationId: string, text: string, clientMessageId: string): Promise<Row> {
     await this.assertConversationMember(userId, conversationId);
+    const blocked = await this.infra.pool.query(
+      `select 1 from app.conversation_members other join app.blocks b
+         on ((b.blocker_id = $1 and b.blocked_id = other.user_id)
+          or (b.blocker_id = other.user_id and b.blocked_id = $1))
+       where other.conversation_id = $2 and other.user_id <> $1 and other.left_at is null limit 1`,
+      [userId, conversationId],
+    );
+    if (blocked.rowCount) throw new ConflictException('Messaging is unavailable for this conversation');
     const id = randomUUID();
     const result = await this.infra.pool.query(
       `insert into app.messages
@@ -355,6 +411,23 @@ export class AppService {
       [conversationId, result.rows[0].id],
     );
     return result.rows[0];
+  }
+
+  private async invalidateDiscoveryCache(...userIds: string[]): Promise<void> {
+    for (const userId of new Set(userIds)) {
+      let cursor = '0';
+      do {
+        const [nextCursor, keys] = await this.infra.redis.scan(
+          cursor,
+          'MATCH',
+          `feed:${config.implementation}:${userId}:*`,
+          'COUNT',
+          100,
+        );
+        cursor = nextCursor;
+        if (keys.length) await this.infra.redis.del(...keys);
+      } while (cursor !== '0');
+    }
   }
 
   async createMediaUpload(userId: string, input: Row): Promise<Row> {

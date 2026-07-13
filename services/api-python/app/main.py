@@ -97,12 +97,12 @@ def metrics() -> Response:
 
 @app.get("/v1/feed")
 def feed(user_id: UserId, mode: str = "recommended", cityCode: str = "310100") -> dict[str, Any]:
-    return service.feed(mode, cityCode)
+    return service.feed(user_id, mode, cityCode)
 
 
 @app.get("/v1/search")
 def search(user_id: UserId, q: str = Query(min_length=1), types: str | None = None) -> dict[str, Any]:
-    return service.search(q, types)
+    return service.search(user_id, q, types)
 
 
 @app.get("/v1/activities/nearby")
@@ -112,7 +112,7 @@ def nearby(
     categories: str | None = None,
     participantMax: int = Query(default=50, ge=2, le=50),
 ) -> dict[str, Any]:
-    return service.nearby(cityCode, categories, participantMax)
+    return service.nearby(user_id, cityCode, categories, participantMax)
 
 
 @app.get("/v1/me/profile")
@@ -138,6 +138,24 @@ def swipe(payload: SwipeInput, user_id: UserId) -> dict[str, Any]:
 @app.get("/v1/conversations")
 def conversations(user_id: UserId) -> dict[str, Any]:
     return service.conversations(user_id)
+
+
+@app.post("/v1/users/{target_user_id}/block")
+def block_user(target_user_id: str, payload: dict[str, Any], user_id: UserId) -> dict[str, Any]:
+    mode = "silent" if payload.get("mode") == "silent" else "standard"
+    raw_reason_code = payload.get("reason_code", payload.get("reasonCode"))
+    reason_code = str(raw_reason_code) if raw_reason_code else None
+    return service.block_user(user_id, target_user_id, mode, reason_code)
+
+
+@app.delete("/v1/users/{target_user_id}/block", status_code=204)
+def unblock_user(target_user_id: str, user_id: UserId) -> None:
+    service.unblock_user(user_id, target_user_id)
+
+
+@app.get("/v1/me/blocks")
+def blocks(user_id: UserId) -> dict[str, Any]:
+    return service.blocks(user_id)
 
 
 @app.get("/v1/conversations/{conversation_id}/messages")

@@ -508,6 +508,7 @@ function MessagesScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyl
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [blocked, setBlocked] = useState(false);
+  const [blocking, setBlocking] = useState(false);
   const [status, setStatus] = useState('');
 
   useEffect(() => {
@@ -515,8 +516,30 @@ function MessagesScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyl
   }, []);
 
   async function openConversation(conversation: Conversation) {
-    setActive(conversation);
-    setMessages((await api.messages(conversation.id)).items);
+    setBlocked(false);
+    try {
+      const [messageResult, blockResult] = await Promise.all([api.messages(conversation.id), api.blocks()]);
+      setMessages(messageResult.items);
+      setBlocked(Boolean(conversation.peerUserId && blockResult.items.some((item) => item.id === conversation.peerUserId)));
+      setActive(conversation);
+    } catch (error) {
+      setStatus((error as Error).message);
+    }
+  }
+
+  async function toggleBlock() {
+    if (!active?.peerUserId || blocking) return;
+    const nextBlocked = !blocked;
+    setBlocking(true);
+    try {
+      if (nextBlocked) await api.blockUser(active.peerUserId);
+      else await api.unblockUser(active.peerUserId);
+      setBlocking(false);
+      setBlocked(nextBlocked);
+    } catch (error) {
+      setStatus((error as Error).message);
+      setBlocking(false);
+    }
   }
 
   async function send() {
@@ -536,7 +559,7 @@ function MessagesScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyl
         <View style={styles.chatHeader}>
           <Pressable accessibilityLabel="返回消息" onPress={() => setActive(null)}><Text style={styles.back}>‹</Text></Pressable>
           <View style={{ flex: 1 }}><Text style={styles.chatTitle}>{active.title}</Text><Text style={styles.chatSubtitle}>{blocked ? '静默拉黑 · 对方不会收到提示' : '已通过平台安全检查'}</Text></View>
-          <Pressable accessibilityRole="button" testID="silent-block" onPress={() => setBlocked((value) => !value)}><Text style={[styles.blockText, blocked && { color: theme.accent }]}>{blocked ? '解除' : '拉黑'}</Text></Pressable>
+          {active.peerUserId ? <Pressable key={blocked ? 'unblock' : 'block'} accessibilityRole="button" accessibilityLabel={blocked ? '解除拉黑' : '静默拉黑'} testID="silent-block" disabled={blocking} onPress={() => void toggleBlock()}><Text style={[styles.blockText, blocked && { color: theme.accent }]}>{blocking ? '处理中' : blocked ? '解除' : '拉黑'}</Text></Pressable> : null}
         </View>
         <View style={styles.notice}><Text style={styles.noticeText}>不要提前转账；精确集合位置仅向已加入成员开放。</Text></View>
         <View style={{ minHeight: 380 }}>
@@ -547,7 +570,7 @@ function MessagesScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyl
         </View>
         <View style={styles.composer}>
           <TextInput accessibilityLabel="输入消息" value={draft} onChangeText={setDraft} editable={!blocked} placeholder={blocked ? '已静默拉黑' : '输入消息…'} placeholderTextColor={theme.muted} style={styles.composerInput} />
-          <Pressable accessibilityLabel="发送消息" onPress={() => void send()} style={styles.send}><Text style={styles.sendText}>发送</Text></Pressable>
+          <Pressable accessibilityLabel="发送消息" disabled={blocked} onPress={() => void send()} style={[styles.send, blocked && { opacity: 0.45 }]}><Text style={styles.sendText}>发送</Text></Pressable>
         </View>
       </View>
     );

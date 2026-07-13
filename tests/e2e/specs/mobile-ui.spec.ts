@@ -5,6 +5,13 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByTestId('feed-card-activity').first()).toBeVisible();
 });
 
+test.afterEach(async () => {
+  await fetch('http://127.0.0.1:3100/v1/users/22222222-2222-4222-8222-222222222222/block', {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer demo-user' },
+  });
+});
+
 test('home combines activity and posts with search and filters', async ({ page }) => {
   await expect(page.getByTestId('feed-card-activity').first()).toBeVisible();
   await expect(page.getByTestId('feed-card-post').first()).toBeVisible();
@@ -25,6 +32,10 @@ test('home combines activity and posts with search and filters', async ({ page }
 });
 
 test('all five mobile tabs have real data and interactions', async ({ page }) => {
+  await fetch('http://127.0.0.1:3100/v1/users/22222222-2222-4222-8222-222222222222/block', {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer demo-user' },
+  });
   await page.getByTestId('tab-match').click();
   await expect(page.getByTestId('match-screen')).toBeVisible();
   await expect(page.getByText(/ID [A-Z0-9]+/)).toBeVisible();
@@ -39,8 +50,10 @@ test('all five mobile tabs have real data and interactions', async ({ page }) =>
   await page.getByLabel('输入消息').fill(messageText);
   await page.getByLabel('发送消息').click();
   await expect(page.getByText(messageText)).toBeVisible();
-  await page.getByTestId('silent-block').click();
+  const blockButton = page.getByTestId('silent-block');
+  await blockButton.click();
   await expect(page.getByText('静默拉黑 · 对方不会收到提示')).toBeVisible();
+  await expect(page.getByLabel('输入消息')).not.toBeEditable();
 
   await page.getByTestId('tab-profile').click();
   await expect(page.getByText('ID DC10001 · 30 岁 · 产品经理')).toBeVisible();
