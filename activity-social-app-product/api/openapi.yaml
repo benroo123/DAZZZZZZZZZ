@@ -1,0 +1,1987 @@
+openapi: 3.1.0
+info:
+  title: DAZZZZZZZZZ Activity Social API
+  version: 0.1.0
+  description: >-
+    Mobile-first activity social API. Stable operationId values are also Agent tool identifiers.
+    High-risk mutations support dry-run, idempotency and human approval.
+servers:
+  - url: https://api.example.com/v1
+security:
+  - bearerAuth: []
+tags:
+  - { name: System }
+  - { name: Auth }
+  - { name: Identity }
+  - { name: Profile }
+  - { name: Social }
+  - { name: Discovery }
+  - { name: Media }
+  - { name: AI }
+  - { name: Posts }
+  - { name: Activities }
+  - { name: Matching }
+  - { name: Messaging }
+  - { name: Notifications }
+  - { name: Safety }
+  - { name: DataRights }
+  - { name: Agent }
+  - { name: Webhooks }
+  - { name: PaymentsFuture }
+paths:
+  /system/config:
+    get:
+      tags: [System]
+      operationId: getSystemConfig
+      summary: Get mobile feature flags, minimum versions and AI disclosure
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /system/health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Health check
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+
+  /auth/otp/request:
+    post:
+      tags: [Auth]
+      operationId: requestOtp
+      summary: Request an SMS one-time password
+      security: []
+      x-risk-level: medium
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OtpRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+        '429': { $ref: '#/components/responses/Error' }
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyOtp
+      summary: Verify OTP and issue rotating tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OtpVerifyRequest' }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthTokens' }
+        '400': { $ref: '#/components/responses/Error' }
+  /auth/token/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      summary: Rotate refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string, minLength: 20 }
+      responses:
+        '200':
+          description: Refreshed tokens
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthTokens' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current device session
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      operationId: listSessions
+      summary: List signed-in devices
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /auth/sessions/{session_id}:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    delete:
+      tags: [Auth]
+      operationId: revokeSession
+      summary: Revoke a device session
+      x-risk-level: high
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+
+  /identity/real-name/sessions:
+    post:
+      tags: [Identity]
+      operationId: createRealNameSession
+      summary: Create a vendor-hosted real-name verification session
+      x-risk-level: critical
+      x-agent-approval: always
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /identity/real-name/status:
+    get:
+      tags: [Identity]
+      operationId: getRealNameStatus
+      summary: Get verification result without identity source values
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+
+  /me/profile:
+    get:
+      tags: [Profile]
+      operationId: getMyProfile
+      summary: Get the authenticated user's full profile
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+    patch:
+      tags: [Profile]
+      operationId: updateMyProfile
+      summary: Update profile fields and field visibility
+      x-risk-level: medium
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfilePatch' }
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '409': { $ref: '#/components/responses/Error' }
+  /users/{user_id}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Profile]
+      operationId: getUserProfile
+      summary: Get a visibility-filtered user profile
+      responses:
+        '200':
+          description: Public profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserCard' }
+        '404': { $ref: '#/components/responses/Error' }
+  /users/by-public-id/{public_id}:
+    get:
+      tags: [Profile]
+      operationId: getUserByPublicId
+      summary: Find a user by opt-in public ID
+      parameters:
+        - name: public_id
+          in: path
+          required: true
+          schema: { type: string, maxLength: 20 }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+        '404': { $ref: '#/components/responses/Error' }
+  /me/photos:
+    post:
+      tags: [Profile]
+      operationId: addProfilePhoto
+      summary: Attach an approved media asset to the profile
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [media_id, position]
+              properties:
+                media_id: { $ref: '#/components/schemas/Uuid' }
+                position: { type: integer, minimum: 0, maximum: 5 }
+                is_primary: { type: boolean, default: false }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /me/photos/{photo_id}:
+    parameters:
+      - $ref: '#/components/parameters/PhotoId'
+    patch:
+      tags: [Profile]
+      operationId: updateProfilePhoto
+      summary: Reorder or set the primary profile photo
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    delete:
+      tags: [Profile]
+      operationId: deleteProfilePhoto
+      summary: Delete a profile photo association
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /interests:
+    get:
+      tags: [Profile]
+      operationId: listInterests
+      summary: List active interest taxonomy
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /me/interests:
+    put:
+      tags: [Profile]
+      operationId: replaceMyInterests
+      summary: Replace interest choices atomically
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /me/preferences/match:
+    get:
+      tags: [Profile]
+      operationId: getMatchPreferences
+      summary: Get match preferences
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    patch:
+      tags: [Profile]
+      operationId: updateMatchPreferences
+      summary: Update match preferences
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /me/privacy:
+    get:
+      tags: [Profile]
+      operationId: getPrivacySettings
+      summary: Get privacy and recommendation controls
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    patch:
+      tags: [Profile]
+      operationId: updatePrivacySettings
+      summary: Update privacy, personalization and Agent data controls
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+
+  /users/{user_id}/follow:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      tags: [Social]
+      operationId: followUser
+      summary: Follow a user
+      x-risk-level: medium
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+    delete:
+      tags: [Social]
+      operationId: unfollowUser
+      summary: Unfollow a user
+      x-risk-level: medium
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /me/follows:
+    get:
+      tags: [Social]
+      operationId: listFollowing
+      summary: List followed users
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /me/followers:
+    get:
+      tags: [Social]
+      operationId: listFollowers
+      summary: List followers
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /users/{user_id}/block:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      tags: [Social]
+      operationId: blockUser
+      summary: Block a user across discovery, activities and messaging
+      x-risk-level: high
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { type: string, enum: [standard, silent], default: standard }
+                reason_code: { type: string, maxLength: 40 }
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+    delete:
+      tags: [Social]
+      operationId: unblockUser
+      summary: Remove a user block
+      x-risk-level: high
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /me/blocks:
+    get:
+      tags: [Social]
+      operationId: listBlockedUsers
+      summary: List blocked users
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+
+  /feed:
+    get:
+      tags: [Discovery]
+      operationId: getHomeFeed
+      summary: Get a mixed activity and post feed
+      parameters:
+        - $ref: '#/components/parameters/FeedMode'
+        - $ref: '#/components/parameters/CityCode'
+        - $ref: '#/components/parameters/Latitude'
+        - $ref: '#/components/parameters/Longitude'
+        - $ref: '#/components/parameters/RadiusKm'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Mixed feed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedPage' }
+  /search:
+    get:
+      tags: [Discovery]
+      operationId: searchEntities
+      summary: Search activities, places, names, posts and people
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: types
+          in: query
+          schema:
+            type: array
+            items: { type: string, enum: [activity, place, post, user] }
+          style: form
+          explode: false
+        - $ref: '#/components/parameters/CityCode'
+        - $ref: '#/components/parameters/Latitude'
+        - $ref: '#/components/parameters/Longitude'
+        - $ref: '#/components/parameters/RadiusKm'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /search/suggestions:
+    get:
+      tags: [Discovery]
+      operationId: getSearchSuggestions
+      summary: Get typeahead suggestions
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, maxLength: 100 }
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /activities/nearby:
+    get:
+      tags: [Discovery, Activities]
+      operationId: listNearbyActivities
+      summary: Filter nearby activities by type, place, distance, time and people
+      parameters:
+        - $ref: '#/components/parameters/CityCode'
+        - $ref: '#/components/parameters/Latitude'
+        - $ref: '#/components/parameters/Longitude'
+        - $ref: '#/components/parameters/RadiusKm'
+        - name: categories
+          in: query
+          schema: { type: array, items: { type: string }, maxItems: 10 }
+          style: form
+          explode: false
+        - name: starts_after
+          in: query
+          schema: { type: string, format: date-time }
+        - name: starts_before
+          in: query
+          schema: { type: string, format: date-time }
+        - name: participant_min
+          in: query
+          schema: { type: integer, minimum: 2, maximum: 50 }
+        - name: participant_max
+          in: query
+          schema: { type: integer, minimum: 2, maximum: 50 }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /events/batch:
+    post:
+      tags: [Discovery]
+      operationId: ingestClientEvents
+      summary: Ingest consent-aware exposure and conversion events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/ClientEvent' }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+
+  /media/uploads:
+    post:
+      tags: [Media]
+      operationId: createMediaUpload
+      summary: Create a direct upload session
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MediaUploadRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /media/uploads/{upload_id}/complete:
+    post:
+      tags: [Media]
+      operationId: completeMediaUpload
+      summary: Complete upload and start scanning and moderation
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+  /media/{media_id}:
+    parameters:
+      - $ref: '#/components/parameters/MediaId'
+    get:
+      tags: [Media]
+      operationId: getMediaAsset
+      summary: Get media processing status and a short-lived URL
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    delete:
+      tags: [Media]
+      operationId: deleteMediaAsset
+      summary: Delete an unreferenced media asset
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /ai/generations:
+    post:
+      tags: [AI]
+      operationId: createAiGeneration
+      summary: Create an AI cover or summary job
+      x-risk-level: medium
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AiGenerationRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+  /ai/generations/{job_id}:
+    get:
+      tags: [AI]
+      operationId: getAiGeneration
+      summary: Get generation status and provenance
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /ai/generations/{job_id}/confirm:
+    post:
+      tags: [AI]
+      operationId: confirmAiGeneration
+      summary: Confirm a specific generated asset for later publication
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /ai/generations/{job_id}/cancel:
+    post:
+      tags: [AI]
+      operationId: cancelAiGeneration
+      summary: Cancel a generation job
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+
+  /posts:
+    post:
+      tags: [Posts]
+      operationId: createPost
+      summary: Create a post draft with at least one media asset
+      x-risk-level: medium
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostInput' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /posts/{post_id}:
+    parameters:
+      - $ref: '#/components/parameters/PostId'
+    get:
+      tags: [Posts]
+      operationId: getPost
+      summary: Get a post
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    patch:
+      tags: [Posts]
+      operationId: updatePost
+      summary: Update a draft or editable post
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    delete:
+      tags: [Posts]
+      operationId: deletePost
+      summary: Delete a post
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /posts/{post_id}/publish:
+    post:
+      tags: [Posts]
+      operationId: publishPost
+      summary: Publish a post after moderation and AI-label validation
+      x-risk-level: high
+      x-agent-approval: conditional
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+        '202': { $ref: '#/components/responses/Accepted' }
+  /posts/{post_id}/reactions/{reaction}:
+    parameters:
+      - $ref: '#/components/parameters/PostId'
+      - name: reaction
+        in: path
+        required: true
+        schema: { type: string, enum: [like] }
+      - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      tags: [Posts]
+      operationId: reactToPost
+      summary: Add a post reaction
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+    delete:
+      tags: [Posts]
+      operationId: removePostReaction
+      summary: Remove a post reaction
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /posts/{post_id}/comments:
+    parameters:
+      - $ref: '#/components/parameters/PostId'
+    get:
+      tags: [Posts]
+      operationId: listComments
+      summary: List post comments
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+    post:
+      tags: [Posts]
+      operationId: createComment
+      summary: Create a comment
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /comments/{comment_id}:
+    parameters:
+      - name: comment_id
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/Uuid' }
+    patch:
+      tags: [Posts]
+      operationId: updateComment
+      summary: Update own comment
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    delete:
+      tags: [Posts]
+      operationId: deleteComment
+      summary: Delete own comment
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+
+  /activities:
+    post:
+      tags: [Activities]
+      operationId: createActivity
+      summary: Create an activity draft for 2 to 50 participants
+      x-risk-level: medium
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActivityInput' }
+      responses:
+        '201':
+          description: Activity draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+        '422': { $ref: '#/components/responses/Error' }
+  /activities/{activity_id}:
+    parameters:
+      - $ref: '#/components/parameters/ActivityId'
+    get:
+      tags: [Activities]
+      operationId: getActivity
+      summary: Get activity with viewer-specific capabilities
+      responses:
+        '200':
+          description: Activity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+    patch:
+      tags: [Activities]
+      operationId: updateActivity
+      summary: Update draft or allowed activity fields
+      x-risk-level: high
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/DryRun'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActivityPatch' }
+      responses:
+        '200':
+          description: Updated activity or preview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Activities]
+      operationId: deleteActivity
+      summary: Delete an unpublished activity draft
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /activities/{activity_id}/publish:
+    post:
+      tags: [Activities]
+      operationId: publishActivity
+      summary: Publish an activity after policy evaluation
+      x-risk-level: high
+      x-agent-approval: conditional
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+        '202': { $ref: '#/components/responses/Accepted' }
+  /activities/{activity_id}/cancel:
+    post:
+      tags: [Activities]
+      operationId: cancelActivity
+      summary: Cancel activity and notify affected members
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /activities/{activity_id}/join:
+    post:
+      tags: [Activities]
+      operationId: joinActivity
+      summary: Apply, join directly, or enter the waitlist atomically
+      x-risk-level: high
+      x-agent-approval: conditional
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JoinActivityRequest' }
+      responses:
+        '200':
+          description: Membership transition
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivityMembership' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Activities]
+      operationId: leaveActivity
+      summary: Withdraw application or leave activity
+      x-risk-level: high
+      x-agent-approval: conditional
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /activities/{activity_id}/members:
+    get:
+      tags: [Activities]
+      operationId: listActivityMembers
+      summary: List visibility-filtered members and applications
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - name: status
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /activities/{activity_id}/members/{user_id}/approve:
+    post:
+      tags: [Activities]
+      operationId: approveActivityMember
+      summary: Approve an applicant and reserve capacity atomically
+      x-risk-level: high
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /activities/{activity_id}/members/{user_id}/reject:
+    post:
+      tags: [Activities]
+      operationId: rejectActivityMember
+      summary: Reject an applicant
+      x-risk-level: high
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /activities/{activity_id}/members/{user_id}:
+    delete:
+      tags: [Activities]
+      operationId: removeActivityMember
+      summary: Remove a member and apply waitlist promotion policy
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /activities/{activity_id}/invites:
+    post:
+      tags: [Activities]
+      operationId: inviteToActivity
+      summary: Invite a user to an activity
+      x-risk-level: high
+      x-agent-approval: conditional
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /activity-invites/{invite_id}/respond:
+    post:
+      tags: [Activities]
+      operationId: respondActivityInvite
+      summary: Accept or decline an activity invite
+      parameters:
+        - name: invite_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /activities/{activity_id}/check-in-token:
+    post:
+      tags: [Activities]
+      operationId: createCheckinToken
+      summary: Create a short-lived activity check-in token
+      x-risk-level: high
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /activities/{activity_id}/check-ins:
+    post:
+      tags: [Activities]
+      operationId: checkInActivity
+      summary: Check in to an approved activity
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /activities/{activity_id}/reviews:
+    parameters:
+      - $ref: '#/components/parameters/ActivityId'
+    get:
+      tags: [Activities]
+      operationId: listActivityReviews
+      summary: List reviews after the double-blind reveal condition
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+    post:
+      tags: [Activities]
+      operationId: createActivityReview
+      summary: Create a post-activity double-blind review
+      x-risk-level: medium
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+
+  /matching/candidates:
+    get:
+      tags: [Matching]
+      operationId: listMatchCandidates
+      summary: Get candidates filtered by privacy, blocks and safety
+      parameters:
+        - $ref: '#/components/parameters/CityCode'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /matching/swipes:
+    post:
+      tags: [Matching]
+      operationId: submitSwipe
+      summary: Submit an idempotent pass, like or super-like
+      x-risk-level: medium
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SwipeRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+  /matches:
+    get:
+      tags: [Matching]
+      operationId: listMatches
+      summary: List active matches
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /matches/{match_id}:
+    parameters:
+      - name: match_id
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/Uuid' }
+    get:
+      tags: [Matching]
+      operationId: getMatch
+      summary: Get match details and shared activity suggestions
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    delete:
+      tags: [Matching]
+      operationId: unmatch
+      summary: End a match without disclosing a reason to the peer
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+
+  /conversations:
+    get:
+      tags: [Messaging]
+      operationId: listConversations
+      summary: List direct, activity and system conversations
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /conversations/direct:
+    post:
+      tags: [Messaging]
+      operationId: createDirectConversation
+      summary: Create or return an eligible direct conversation
+      x-risk-level: high
+      x-agent-approval: conditional
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+        '201': { $ref: '#/components/responses/OkObject' }
+  /conversations/{conversation_id}:
+    get:
+      tags: [Messaging]
+      operationId: getConversation
+      summary: Get conversation details and viewer capabilities
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /conversations/{conversation_id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ConversationId'
+    get:
+      tags: [Messaging]
+      operationId: listMessages
+      summary: List messages using a stable cursor
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+    post:
+      tags: [Messaging]
+      operationId: sendMessage
+      summary: Send a message after membership, block, rate and safety checks
+      x-risk-level: high
+      x-agent-approval: conditional
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DryRun'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SendMessageRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+        '202': { $ref: '#/components/responses/Accepted' }
+  /conversations/{conversation_id}/read:
+    post:
+      tags: [Messaging]
+      operationId: markConversationRead
+      summary: Advance the authenticated user's read cursor
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /conversations/{conversation_id}/summary:
+    post:
+      tags: [Messaging, AI]
+      operationId: summarizeConversation
+      summary: Summarize messages visible to the represented user without returning the raw transcript to an Agent
+      x-risk-level: medium
+      x-agent-approval: conversation_grant
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                since_message_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+                focus: { type: [string, 'null'], maxLength: 200 }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+  /conversations/{conversation_id}/preferences:
+    patch:
+      tags: [Messaging]
+      operationId: updateConversationPreferences
+      summary: Mute or hide a conversation
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /messages/{message_id}:
+    delete:
+      tags: [Messaging]
+      operationId: deleteMessage
+      summary: Recall or locally delete a message according to policy
+      x-risk-level: high
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: List system notifications
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /notifications/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationsRead
+      summary: Mark notifications as read
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /me/notification-preferences:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationPreferences
+      summary: Get push and aggregation settings
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    patch:
+      tags: [Notifications]
+      operationId: updateNotificationPreferences
+      summary: Update push and aggregation settings
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+
+  /reports:
+    post:
+      tags: [Safety]
+      operationId: createReport
+      summary: Report a user, content, activity, message or conversation
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /reports/{report_id}:
+    get:
+      tags: [Safety]
+      operationId: getReport
+      summary: Get the reporter-visible case status
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /safety/emergency-shares:
+    post:
+      tags: [Safety]
+      operationId: createEmergencyShare
+      summary: Create an expiring activity safety share
+      x-risk-level: critical
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /safety/emergency-shares/{share_id}:
+    delete:
+      tags: [Safety]
+      operationId: revokeEmergencyShare
+      summary: Revoke an emergency share
+      parameters:
+        - name: share_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /me/data-exports:
+    post:
+      tags: [DataRights]
+      operationId: requestDataExport
+      summary: Request an authenticated personal data export
+      x-risk-level: critical
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+  /me/data-exports/{job_id}:
+    get:
+      tags: [DataRights]
+      operationId: getDataExport
+      summary: Get data export status
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /me/deletion-requests:
+    post:
+      tags: [DataRights]
+      operationId: requestAccountDeletion
+      summary: Request account deletion with a cooling-off period
+      x-risk-level: critical
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+  /me/deletion-requests/{request_id}:
+    delete:
+      tags: [DataRights]
+      operationId: cancelAccountDeletion
+      summary: Cancel a pending deletion request
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+
+  /agent/manifest:
+    get:
+      tags: [Agent]
+      operationId: getAgentManifest
+      summary: Get Agent capability, risk and approval policy manifest
+      parameters:
+        - $ref: '#/components/parameters/AgentPrincipal'
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /agent/tools:
+    get:
+      tags: [Agent]
+      operationId: listAgentTools
+      summary: Get authorized tool JSON Schemas
+      parameters:
+        - $ref: '#/components/parameters/AgentPrincipal'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /agent/runs:
+    post:
+      tags: [Agent]
+      operationId: createAgentRun
+      summary: Start an auditable delegated workflow
+      parameters:
+        - $ref: '#/components/parameters/AgentPrincipal'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentRunRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /agent/runs/{run_id}:
+    get:
+      tags: [Agent]
+      operationId: getAgentRun
+      summary: Get an Agent run, plan, actions and approval state
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - $ref: '#/components/parameters/AgentPrincipal'
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+  /agent/runs/{run_id}/actions:execute:
+    post:
+      tags: [Agent]
+      operationId: executeAgentAction
+      summary: Preview or execute one typed Agent action
+      x-risk-level: variable
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - $ref: '#/components/parameters/AgentPrincipal'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentActionRequest' }
+      responses:
+        '200':
+          description: Action result or preview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentActionResult' }
+        '202': { $ref: '#/components/responses/Accepted' }
+  /agent/runs/{run_id}/cancel:
+    post:
+      tags: [Agent]
+      operationId: cancelAgentRun
+      summary: Cancel an Agent workflow and future actions
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - $ref: '#/components/parameters/AgentPrincipal'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+  /agent/approvals:
+    get:
+      tags: [Agent]
+      operationId: listAgentApprovals
+      summary: List pending approvals for the authenticated user
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+  /agent/approvals/{approval_id}/decision:
+    post:
+      tags: [Agent]
+      operationId: decideAgentApproval
+      summary: Approve or deny an immutable Agent action snapshot
+      x-risk-level: critical
+      parameters:
+        - name: approval_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalDecision' }
+      responses:
+        '200': { $ref: '#/components/responses/CommandResult' }
+
+  /webhooks:
+    get:
+      tags: [Webhooks]
+      operationId: listWebhooks
+      summary: List webhook subscriptions
+      responses:
+        '200': { $ref: '#/components/responses/OkPage' }
+    post:
+      tags: [Webhooks]
+      operationId: createWebhook
+      summary: Create an event subscription and return the secret once
+      x-risk-level: high
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '201': { $ref: '#/components/responses/OkObject' }
+  /webhooks/{webhook_id}:
+    parameters:
+      - name: webhook_id
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/Uuid' }
+    patch:
+      tags: [Webhooks]
+      operationId: updateWebhook
+      summary: Update event subscription or pause delivery
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody: { $ref: '#/components/requestBodies/FreeformCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+    delete:
+      tags: [Webhooks]
+      operationId: deleteWebhook
+      summary: Delete an event subscription
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { $ref: '#/components/responses/NoContent' }
+  /webhooks/{webhook_id}/rotate-secret:
+    post:
+      tags: [Webhooks]
+      operationId: rotateWebhookSecret
+      summary: Rotate the signing secret and return it once
+      x-risk-level: high
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': { $ref: '#/components/responses/OkObject' }
+
+  /activities/{activity_id}/orders:
+    post:
+      tags: [PaymentsFuture]
+      operationId: createActivityOrder
+      summary: Future - create an activity fee order through a licensed provider
+      deprecated: true
+      x-risk-level: critical
+      x-agent-approval: always
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '501': { $ref: '#/components/responses/Error' }
+  /orders/{order_id}:
+    get:
+      tags: [PaymentsFuture]
+      operationId: getOrder
+      summary: Future - get order state
+      deprecated: true
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '501': { $ref: '#/components/responses/Error' }
+  /orders/{order_id}/pay:
+    post:
+      tags: [PaymentsFuture]
+      operationId: payOrder
+      summary: Future - initiate payment with a licensed provider
+      deprecated: true
+      x-risk-level: critical
+      x-agent-approval: always
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '501': { $ref: '#/components/responses/Error' }
+  /orders/{order_id}/refunds:
+    post:
+      tags: [PaymentsFuture]
+      operationId: requestRefund
+      summary: Future - request a refund
+      deprecated: true
+      x-risk-level: critical
+      x-agent-approval: always
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '501': { $ref: '#/components/responses/Error' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 12, maxLength: 120 }
+    AgentPrincipal:
+      name: X-Agent-Principal
+      in: header
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema: { type: string }
+    DryRun:
+      name: dry_run
+      in: query
+      required: false
+      schema: { type: boolean, default: false }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string, maxLength: 512 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    PhotoId:
+      name: photo_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    MediaId:
+      name: media_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    PostId:
+      name: post_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ActivityId:
+      name: activity_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ConversationId:
+      name: conversation_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    FeedMode:
+      name: mode
+      in: query
+      required: false
+      schema: { type: string, enum: [recommended, city], default: recommended }
+    CityCode:
+      name: city_code
+      in: query
+      required: false
+      schema: { type: string, maxLength: 20 }
+    Latitude:
+      name: lat
+      in: query
+      required: false
+      schema: { type: number, minimum: -90, maximum: 90 }
+    Longitude:
+      name: lng
+      in: query
+      required: false
+      schema: { type: number, minimum: -180, maximum: 180 }
+    RadiusKm:
+      name: radius_km
+      in: query
+      required: false
+      schema: { type: number, minimum: 1, maximum: 100, default: 5 }
+  requestBodies:
+    FreeformCommand:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+  responses:
+    OkObject:
+      description: Successful response
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    OkPage:
+      description: Cursor page
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Page' }
+    CommandResult:
+      description: Command result or dry-run preview
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/CommandResult' }
+    Accepted:
+      description: Accepted for asynchronous processing
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AsyncJob' }
+    NoContent:
+      description: Successful response with no body
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+    Error:
+      description: Typed error
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Error' }
+  headers:
+    CorrelationId:
+      description: Request correlation ID
+      schema: { $ref: '#/components/schemas/Uuid' }
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    Page:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { type: object, additionalProperties: true }
+        next_cursor: { type: [string, 'null'] }
+        has_more: { type: boolean }
+    Error:
+      type: object
+      required: [code, message, correlation_id, retryable]
+      properties:
+        code: { type: string, examples: [ACTIVITY_FULL] }
+        message: { type: string }
+        details: { type: object, additionalProperties: true }
+        correlation_id: { $ref: '#/components/schemas/Uuid' }
+        retryable: { type: boolean }
+        suggested_actions:
+          type: array
+          items: { type: string }
+    OtpRequest:
+      type: object
+      required: [phone, purpose, challenge_token]
+      properties:
+        phone: { type: string, pattern: '^\\+?[1-9][0-9]{7,14}$' }
+        purpose: { type: string, enum: [login, bind_phone, high_risk_action] }
+        challenge_token: { type: string }
+    OtpVerifyRequest:
+      type: object
+      required: [phone, code, device]
+      properties:
+        phone: { type: string }
+        code: { type: string, pattern: '^[0-9]{4,8}$' }
+        device:
+          type: object
+          required: [platform, fingerprint]
+          properties:
+            platform: { type: string, enum: [ios, android] }
+            fingerprint: { type: string, maxLength: 256 }
+            app_version: { type: string }
+    AuthTokens:
+      type: object
+      required: [access_token, refresh_token, expires_in, user_id]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        expires_in: { type: integer, examples: [900] }
+        user_id: { $ref: '#/components/schemas/Uuid' }
+    MediaRef:
+      type: object
+      required: [id, url, ai_generated, moderation_status]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        url: { type: string, format: uri }
+        width: { type: integer }
+        height: { type: integer }
+        ai_generated: { type: boolean }
+        ai_label: { type: [string, 'null'], examples: [AI generated content] }
+        moderation_status: { type: string, enum: [pending, approved, rejected, quarantined] }
+    UserCard:
+      type: object
+      required: [id, public_id, display_name, real_name_status, photos, capabilities]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        public_id: { type: string }
+        display_name: { type: string, maxLength: 40 }
+        age: { type: [integer, 'null'], minimum: 18 }
+        real_name_status: { type: string, enum: [unverified, verified] }
+        distance_km: { type: [number, 'null'], description: Rounded distance only }
+        bio: { type: [string, 'null'] }
+        interests: { type: array, items: { type: string } }
+        photos: { type: array, items: { $ref: '#/components/schemas/MediaRef' } }
+        capabilities: { type: array, items: { type: string } }
+    Profile:
+      allOf:
+        - $ref: '#/components/schemas/UserCard'
+        - type: object
+          properties:
+            birth_date: { type: [string, 'null'], format: date }
+            city_code: { type: [string, 'null'] }
+            district_code: { type: [string, 'null'] }
+            occupation: { type: [string, 'null'] }
+            availability: { type: object, additionalProperties: true }
+            field_visibility: { type: object, additionalProperties: true }
+            completion_percent: { type: integer, minimum: 0, maximum: 100 }
+            version: { type: integer, minimum: 1 }
+    ProfilePatch:
+      type: object
+      minProperties: 1
+      properties:
+        display_name: { type: string, minLength: 1, maxLength: 40 }
+        birth_date: { type: string, format: date }
+        bio: { type: string, maxLength: 500 }
+        city_code: { type: string, maxLength: 20 }
+        district_code: { type: string, maxLength: 20 }
+        occupation: { type: string, maxLength: 80 }
+        personality_label: { type: string, maxLength: 32 }
+        availability: { type: object, additionalProperties: true }
+        field_visibility: { type: object, additionalProperties: true }
+    ActivitySummary:
+      type: object
+      required: [id, title, category, starts_at, status, min_participants, max_participants, approved_count, media, capabilities]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        title: { type: string }
+        category: { type: string }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        status: { type: string }
+        city_code: { type: string }
+        district_code: { type: [string, 'null'] }
+        distance_km: { type: [number, 'null'] }
+        min_participants: { type: integer, minimum: 2, maximum: 50 }
+        max_participants: { type: integer, minimum: 2, maximum: 50 }
+        approved_count: { type: integer, minimum: 0, maximum: 50 }
+        media: { type: array, items: { $ref: '#/components/schemas/MediaRef' } }
+        organizer: { $ref: '#/components/schemas/UserCard' }
+        capabilities: { type: array, items: { type: string } }
+    Activity:
+      allOf:
+        - $ref: '#/components/schemas/ActivitySummary'
+        - type: object
+          required: [description, join_policy, version]
+          properties:
+            description: { type: string }
+            join_policy: { type: string, enum: [open, approval, invite_only] }
+            application_deadline: { type: [string, 'null'], format: date-time }
+            venue_name: { type: [string, 'null'] }
+            public_location: { $ref: '#/components/schemas/GeoPoint' }
+            exact_location_available: { type: boolean }
+            cost_type: { type: string, enum: [free, aa, fixed, organizer_pays] }
+            cost_amount_cents: { type: [integer, 'null'], minimum: 0 }
+            currency: { type: string, minLength: 3, maxLength: 3 }
+            membership: { oneOf: [{ $ref: '#/components/schemas/ActivityMembership' }, { type: 'null' }] }
+            version: { type: integer, minimum: 1 }
+    ActivityInput:
+      type: object
+      required: [title, description, category, media_ids, starts_at, ends_at, city_code, min_participants, max_participants, join_policy]
+      properties:
+        title: { type: string, minLength: 4, maxLength: 120 }
+        description: { type: string, minLength: 10, maxLength: 5000 }
+        category: { type: string, maxLength: 60 }
+        media_ids:
+          type: array
+          minItems: 1
+          maxItems: 9
+          items: { $ref: '#/components/schemas/Uuid' }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        application_deadline: { type: [string, 'null'], format: date-time }
+        city_code: { type: string, maxLength: 20 }
+        district_code: { type: [string, 'null'], maxLength: 20 }
+        venue_name: { type: [string, 'null'], maxLength: 120 }
+        public_location: { $ref: '#/components/schemas/GeoPoint' }
+        exact_location_envelope: { type: [string, 'null'], description: Client-to-service encrypted exact location }
+        min_participants: { type: integer, minimum: 2, maximum: 50 }
+        max_participants: { type: integer, minimum: 2, maximum: 50 }
+        join_policy: { type: string, enum: [open, approval, invite_only] }
+        waitlist_enabled: { type: boolean, default: true }
+        cost_type: { type: string, enum: [free, aa, fixed, organizer_pays], default: free }
+        cost_amount_cents: { type: [integer, 'null'], minimum: 0 }
+    ActivityPatch:
+      type: object
+      description: Partial ActivityInput; server applies status-dependent edit rules.
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 4, maxLength: 120 }
+        description: { type: string, minLength: 10, maxLength: 5000 }
+        category: { type: string, maxLength: 60 }
+        media_ids: { type: array, minItems: 1, maxItems: 9, items: { $ref: '#/components/schemas/Uuid' } }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        application_deadline: { type: [string, 'null'], format: date-time }
+        city_code: { type: string, maxLength: 20 }
+        district_code: { type: [string, 'null'], maxLength: 20 }
+        venue_name: { type: [string, 'null'], maxLength: 120 }
+        public_location: { $ref: '#/components/schemas/GeoPoint' }
+        min_participants: { type: integer, minimum: 2, maximum: 50 }
+        max_participants: { type: integer, minimum: 2, maximum: 50 }
+        join_policy: { type: string, enum: [open, approval, invite_only] }
+        waitlist_enabled: { type: boolean }
+    ActivityMembership:
+      type: object
+      required: [activity_id, user_id, status, role, updated_at]
+      properties:
+        activity_id: { $ref: '#/components/schemas/Uuid' }
+        user_id: { $ref: '#/components/schemas/Uuid' }
+        status: { type: string, enum: [applied, waitlisted, approved, joined, rejected, cancelled, removed, checked_in, completed, no_show] }
+        role: { type: string, enum: [organizer, cohost, participant] }
+        updated_at: { type: string, format: date-time }
+    JoinActivityRequest:
+      type: object
+      properties:
+        application_note: { type: string, maxLength: 500 }
+        accept_rules: { type: boolean }
+    GeoPoint:
+      type: object
+      required: [lat, lng, coordinate_system]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        coordinate_system: { type: string, enum: [WGS84, GCJ02, BD09] }
+    FeedPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/ActivityFeedItem'
+              - $ref: '#/components/schemas/PostFeedItem'
+            discriminator:
+              propertyName: entity_type
+        next_cursor: { type: [string, 'null'] }
+        has_more: { type: boolean }
+    ActivityFeedItem:
+      type: object
+      required: [entity_type, entity, reason_code, impression_id]
+      properties:
+        entity_type: { type: string, const: activity }
+        entity: { $ref: '#/components/schemas/ActivitySummary' }
+        reason_code: { type: string }
+        impression_id: { $ref: '#/components/schemas/Uuid' }
+    PostFeedItem:
+      type: object
+      required: [entity_type, entity, reason_code, impression_id]
+      properties:
+        entity_type: { type: string, const: post }
+        entity: { type: object, additionalProperties: true }
+        reason_code: { type: string }
+        impression_id: { $ref: '#/components/schemas/Uuid' }
+    MediaUploadRequest:
+      type: object
+      required: [purpose, filename, mime_type, byte_size, sha256]
+      properties:
+        purpose: { type: string, enum: [profile, post, activity, message] }
+        filename: { type: string, maxLength: 180 }
+        mime_type: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        byte_size: { type: integer, minimum: 1, maximum: 20971520 }
+        sha256: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
+    AiGenerationRequest:
+      type: object
+      required: [purpose, source_text]
+      properties:
+        purpose: { type: string, enum: [activity_cover, post_cover, summary] }
+        source_text: { type: string, minLength: 1, maxLength: 5000 }
+        style: { type: string, maxLength: 80 }
+        reference_media_ids: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/Uuid' } }
+        aspect_ratio: { type: string, enum: ['1:1', '4:3', '3:4', '16:9'], default: '4:3' }
+    PostInput:
+      type: object
+      required: [body, media_ids]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        media_ids: { type: array, minItems: 1, maxItems: 9, items: { $ref: '#/components/schemas/Uuid' } }
+        visibility: { type: string, enum: [public, followers, activity_members, private], default: public }
+        city_code: { type: [string, 'null'] }
+    SwipeRequest:
+      type: object
+      required: [target_user_id, decision]
+      properties:
+        target_user_id: { $ref: '#/components/schemas/Uuid' }
+        decision: { type: string, enum: [pass, like, super_like] }
+        context_activity_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+    SendMessageRequest:
+      type: object
+      required: [client_message_id, type]
+      properties:
+        client_message_id: { type: string, minLength: 8, maxLength: 80 }
+        type: { type: string, enum: [text, image, activity_card, location] }
+        text: { type: [string, 'null'], maxLength: 5000 }
+        media_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+        activity_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+        location: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
+    ReportRequest:
+      type: object
+      required: [target_type, target_id, reason_code]
+      properties:
+        target_type: { type: string, enum: [user, post, comment, activity, message, conversation] }
+        target_id: { $ref: '#/components/schemas/Uuid' }
+        reason_code: { type: string, maxLength: 60 }
+        details: { type: [string, 'null'], maxLength: 1000 }
+        evidence_media_ids: { type: array, maxItems: 6, items: { $ref: '#/components/schemas/Uuid' } }
+        protective_block: { type: boolean, default: false }
+    ClientEvent:
+      type: object
+      required: [event_id, name, occurred_at]
+      properties:
+        event_id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string, maxLength: 80 }
+        occurred_at: { type: string, format: date-time }
+        entity_type: { type: [string, 'null'] }
+        entity_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+        impression_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+        properties: { type: object, additionalProperties: true }
+    CommandResult:
+      type: object
+      required: [status, dry_run, approval_required, correlation_id]
+      properties:
+        status: { type: string, enum: [preview, succeeded, accepted, denied] }
+        dry_run: { type: boolean }
+        approval_required: { type: boolean }
+        approval_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+        resource: { type: object, additionalProperties: true }
+        proposed_changes: { type: array, items: { type: object, additionalProperties: true } }
+        policy_findings: { type: array, items: { type: object, additionalProperties: true } }
+        event_id: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+        audit_ref: { type: [string, 'null'] }
+        correlation_id: { $ref: '#/components/schemas/Uuid' }
+    AsyncJob:
+      type: object
+      required: [job_id, status, status_url]
+      properties:
+        job_id: { $ref: '#/components/schemas/Uuid' }
+        status: { type: string, enum: [queued, running, awaiting_approval] }
+        status_url: { type: string, format: uri-reference }
+    AgentRunRequest:
+      type: object
+      required: [goal, on_behalf_of]
+      properties:
+        goal: { type: string, minLength: 1, maxLength: 1000 }
+        on_behalf_of: { $ref: '#/components/schemas/Uuid' }
+        constraints: { type: object, additionalProperties: true }
+        max_actions: { type: integer, minimum: 1, maximum: 50, default: 10 }
+        expires_at: { type: string, format: date-time }
+    AgentActionRequest:
+      type: object
+      required: [operation_id, arguments, dry_run]
+      properties:
+        operation_id: { type: string, minLength: 1, maxLength: 120 }
+        arguments: { type: object, additionalProperties: true }
+        dry_run: { type: boolean }
+        expected_resource_version: { type: [integer, 'null'] }
+    AgentActionResult:
+      allOf:
+        - $ref: '#/components/schemas/CommandResult'
+        - type: object
+          required: [action_id]
+          properties:
+            action_id: { $ref: '#/components/schemas/Uuid' }
+            operation_id: { type: string }
+            risk_level: { type: string, enum: [low, medium, high, critical] }
+    ApprovalDecision:
+      type: object
+      required: [decision, action_digest]
+      properties:
+        decision: { type: string, enum: [approve, deny] }
+        action_digest: { type: string, description: Hash of the immutable action snapshot }
+        reason: { type: [string, 'null'], maxLength: 500 }

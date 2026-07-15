@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "DAZZZZZZZZZ",
+    "slug": "dazzzzzzzzz",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.dazzzzzzzzz.app"
+    },
+    "android": {
+      "package": "com.dazzzzzzzzz.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A84FF"
+      }
+    }
+  }
+}
