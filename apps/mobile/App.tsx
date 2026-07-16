@@ -23,6 +23,7 @@ import {
   waitForPublished,
 } from './src/api';
 import { defaultTheme, ThemeKey, themeEntries, ThemeTokens, themes } from './src/themes';
+import { isSupabaseConfigured, signOut, supabase } from './src/supabase';
 
 type TabKey = 'home' | 'match' | 'publish' | 'messages' | 'profile';
 type AppStyles = ReturnType<typeof createStyles>;
@@ -604,11 +605,13 @@ function ProfileScreen({
   styles,
   themeKey,
   onTheme,
+  onSignOut,
 }: {
   theme: ThemeTokens;
   styles: AppStyles;
   themeKey: ThemeKey;
   onTheme: (key: ThemeKey) => void;
+  onSignOut: () => void;
 }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [editing, setEditing] = useState(false);
@@ -665,15 +668,216 @@ function ProfileScreen({
         ))}
       </View>
       {status ? <Text style={styles.status}>{status}</Text> : null}
+      <Pressable accessibilityRole="button" testID="sign-out" onPress={onSignOut} style={styles.signOutButton}>
+        <Text style={styles.signOutText}>退出登录</Text>
+      </Pressable>
     </View>
+  );
+}
+
+function AuthScreen({
+  theme,
+  styles,
+  onBypass,
+}: {
+  theme: ThemeTokens;
+  styles: AppStyles;
+  onBypass: () => void;
+}) {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+
+  async function submit() {
+    setError('');
+    setInfo('');
+    if (!supabase) {
+      setError('Supabase 未配置，无法登录');
+      return;
+    }
+    if (!email.trim() || !password) {
+      setError('请输入邮箱和密码');
+      return;
+    }
+    if (mode === 'signup') {
+      if (password.length < 6) {
+        setError('密码至少 6 位');
+        return;
+      }
+      if (password !== confirm) {
+        setError('两次输入的密码不一致');
+        return;
+      }
+    }
+    setBusy(true);
+    try {
+      if (mode === 'signup') {
+        const { data, error: signUpError } = await supabase.auth.signUp({ email: email.trim(), password });
+        if (signUpError) throw signUpError;
+        if (!data.session) {
+          setInfo('注册成功，请用该邮箱密码登录');
+          setMode('signin');
+          setConfirm('');
+        }
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (signInError) throw signInError;
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <SafeAreaView style={styles.authRoot} testID="auth-screen">
+      <ScrollView contentContainerStyle={styles.authContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={styles.authBrand}>
+          <Text style={styles.authWordmark}>DAZZZZZZZZZ</Text>
+          <Text style={styles.authTagline}>让想法成为一次真实见面</Text>
+        </View>
+        <View style={styles.authCard}>
+          <View style={styles.authSegmented}>
+            <Pressable accessibilityRole="button" testID="auth-mode-signin" style={[styles.authSegment, mode === 'signin' && styles.authSegmentActive]} onPress={() => { setMode('signin'); setError(''); setInfo(''); }}>
+              <Text style={[styles.authSegmentText, mode === 'signin' && styles.authSegmentTextActive]}>登录</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" testID="auth-mode-signup" style={[styles.authSegment, mode === 'signup' && styles.authSegmentActive]} onPress={() => { setMode('signup'); setError(''); setInfo(''); }}>
+              <Text style={[styles.authSegmentText, mode === 'signup' && styles.authSegmentTextActive]}>注册</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.fieldLabel}>邮箱</Text>
+          <TextInput
+            accessibilityLabel="邮箱"
+            testID="auth-email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="you@example.com"
+            placeholderTextColor={theme.muted}
+            style={styles.input}
+          />
+
+          <Text style={styles.fieldLabel}>密码</Text>
+          <View style={styles.authInputRow}>
+            <TextInput
+              accessibilityLabel="密码"
+              testID="auth-password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!show}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="至少 6 位"
+              placeholderTextColor={theme.muted}
+              style={styles.authInput}
+            />
+            <Pressable accessibilityRole="button" testID="auth-toggle-visible" onPress={() => setShow((value) => !value)}>
+              <Text style={styles.authEye}>{show ? '隐藏' : '显示'}</Text>
+            </Pressable>
+          </View>
+
+          {mode === 'signup' ? (
+            <>
+              <Text style={styles.fieldLabel}>确认密码</Text>
+              <View style={styles.authInputRow}>
+                <TextInput
+                  accessibilityLabel="确认密码"
+                  testID="auth-confirm"
+                  value={confirm}
+                  onChangeText={setConfirm}
+                  secureTextEntry={!show}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="再次输入密码"
+                  placeholderTextColor={theme.muted}
+                  style={styles.authInput}
+                />
+                <Pressable accessibilityRole="button" onPress={() => setShow((value) => !value)}>
+                  <Text style={styles.authEye}>{show ? '隐藏' : '显示'}</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : null}
+
+          <AppButton testID="auth-submit" onPress={() => void submit()} theme={theme} styles={styles} disabled={busy}>
+            {busy ? '处理中…' : mode === 'signin' ? '登录' : '创建账号'}
+          </AppButton>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {info ? <Text style={styles.authInfo}>{info}</Text> : null}
+        </View>
+
+        <Pressable accessibilityRole="button" testID="auth-bypass" onPress={onBypass} style={styles.authBypass}>
+          <Text style={styles.authBypassText}>先以演示身份逛逛 →</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 export default function App() {
   const [tab, setTab] = useState<TabKey>('home');
   const [themeKey, setThemeKey] = useState<ThemeKey>(defaultTheme);
+  const [authReady, setAuthReady] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [bypassed, setBypassed] = useState(false);
   const theme = themes[themeKey];
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setAuthReady(true);
+      return;
+    }
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSignedIn(Boolean(data.session));
+      setAuthReady(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setSignedIn(Boolean(session));
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setBypassed(false);
+    setSignedIn(false);
+  };
+
+  if (!authReady) {
+    return (
+      <SafeAreaView style={styles.appRoot}>
+        <StatusBar style={theme.dark ? 'light' : 'dark'} />
+        <View style={styles.splash}>
+          <ActivityIndicator size="large" color={theme.brand} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isSupabaseConfigured && !signedIn && !bypassed) {
+    return (
+      <SafeAreaView style={styles.appRoot}>
+        <StatusBar style={theme.dark ? 'light' : 'dark'} />
+        <AuthScreen theme={theme} styles={styles} onBypass={() => setBypassed(true)} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.appRoot}>
@@ -689,7 +893,7 @@ export default function App() {
           {tab === 'match' ? <MatchScreen theme={theme} styles={styles} /> : null}
           {tab === 'publish' ? <PublishScreen theme={theme} styles={styles} /> : null}
           {tab === 'messages' ? <MessagesScreen theme={theme} styles={styles} /> : null}
-          {tab === 'profile' ? <ProfileScreen theme={theme} styles={styles} themeKey={themeKey} onTheme={setThemeKey} /> : null}
+          {tab === 'profile' ? <ProfileScreen theme={theme} styles={styles} themeKey={themeKey} onTheme={setThemeKey} onSignOut={() => void handleSignOut()} /> : null}
         </ScrollView>
         <View style={styles.tabBar}>
           {tabs.map((entry) => {
@@ -856,5 +1060,25 @@ function createStyles(theme: ThemeTokens) {
     tabLabel: { color: theme.muted, fontSize: 9, marginTop: 4, fontWeight: '600' },
     tabActive: { color: theme.brand, fontWeight: '900' },
     tabIndicator: { position: 'absolute', bottom: 3, height: 3, width: 17, borderRadius: 99, backgroundColor: theme.brand },
+    splash: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background },
+    authRoot: { flex: 1, backgroundColor: theme.background },
+    authContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 40, maxWidth: 460, width: '100%', alignSelf: 'center' },
+    authBrand: { alignItems: 'center', marginBottom: 34 },
+    authWordmark: { color: theme.brand, fontSize: 30, fontWeight: '900', letterSpacing: 2 },
+    authTagline: { color: theme.muted, fontSize: 13, marginTop: 8, letterSpacing: 1 },
+    authCard: { backgroundColor: theme.surface, borderRadius: Math.max(18, radius), borderWidth: 1, borderColor: theme.border, padding: 22, ...(Platform.OS === 'web' ? { boxShadow: '0 18px 50px rgba(0,0,0,.10)' } as never : {}) },
+    authSegmented: { flexDirection: 'row', backgroundColor: theme.background, borderRadius: 12, padding: 4, marginBottom: 10, borderWidth: 1, borderColor: theme.border },
+    authSegment: { flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 9 },
+    authSegmentActive: { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border },
+    authSegmentText: { color: theme.muted, fontSize: 13, fontWeight: '700' },
+    authSegmentTextActive: { color: theme.text, fontWeight: '900' },
+    authInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.background, borderWidth: 1, borderColor: theme.border, borderRadius: Math.max(8, radius), marginTop: 4, marginBottom: 4 },
+    authInput: { flex: 1, color: theme.text, paddingVertical: 13, paddingHorizontal: 14, fontSize: 13, outlineStyle: 'none' } as never,
+    authEye: { color: theme.brand, fontSize: 11, fontWeight: '800', paddingHorizontal: 12 },
+    authInfo: { color: theme.brand, fontSize: 12, textAlign: 'center', marginTop: 12 },
+    authBypass: { alignSelf: 'center', marginTop: 28, paddingVertical: 10, paddingHorizontal: 14 },
+    authBypassText: { color: theme.muted, fontSize: 12, fontWeight: '600' },
+    signOutButton: { alignSelf: 'center', marginTop: 26, paddingVertical: 12, paddingHorizontal: 22, borderWidth: 1, borderColor: theme.border, borderRadius: 99, backgroundColor: theme.surface },
+    signOutText: { color: theme.muted, fontSize: 12, fontWeight: '700' },
   });
 }

@@ -33,3 +33,8 @@ export async function getAccessToken(): Promise<string | null> {
   if (error) throw error;
   return data.session?.access_token ?? null;
 }
+
+export async function signOut(): Promise<void> {
+  if (!supabase) return;
+  await supabase.auth.signOut();
+}
