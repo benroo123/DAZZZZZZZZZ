@@ -92,6 +92,16 @@ npm run test:e2e
 npm run test:all
 ```
 
+移动端布局使用真实安全区、窗口尺寸和系统字体缩放计算，不按具体手机型号写死高度。Web E2E 会覆盖 320px 小屏、标准 iPhone 和大屏 Android 三种视口；安装 Development Build 后可运行原生冒烟测试：
+
+```bash
+cd apps/mobile
+npx eas-cli@latest build --platform android --profile development
+maestro test .maestro/smoke.yaml
+```
+
+真机联调时仍需把 `EXPO_PUBLIC_API_BASE_URL` 指向电脑的局域网 IP；手机上的 `127.0.0.1` 是手机自身。
+
 `tests/e2e/specs/async-publication.spec.ts` 会真实创建帖子、发 Outbox、经 RabbitMQ 消费、向 MinIO 写 AI SVG，再轮询 PostgreSQL 中的发布状态。它不是 mock 测试。
 
 ## 常见问题
