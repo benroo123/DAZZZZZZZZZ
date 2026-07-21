@@ -15,9 +15,13 @@
     },
     "android": {
       "package": "com.dazzzzzzzzz.app",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#0A84FF"
       }
-    }
+    },
+    "plugins": [
+      "expo-status-bar"
+    ]
   }
 }

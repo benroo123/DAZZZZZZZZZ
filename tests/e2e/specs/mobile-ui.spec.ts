@@ -44,7 +44,7 @@ test('all five mobile tabs have real data and interactions', async ({ page }) =>
 
   await page.getByTestId('tab-messages').click();
   await expect(page.getByText('我的关注')).toBeVisible();
-  await page.getByTestId('conversation-row').first().click();
+  await page.getByLabel(/^打开私信：/).click();
   await expect(page.getByTestId('chat-screen')).toBeVisible();
   const messageText = `E2E 本地测试消息 ${Date.now()}`;
   await page.getByLabel('输入消息').fill(messageText);

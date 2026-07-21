@@ -1,0 +1,22 @@
+appId: com.dazzzzzzzzz.app
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: home-screen
+- tapOn:
+    id: tab-match
+- assertVisible:
+    id: match-screen
+- tapOn:
+    id: tab-publish
+- assertVisible:
+    id: publish-screen
+- tapOn:
+    id: tab-messages
+- assertVisible:
+    id: messages-screen
+- tapOn:
+    id: tab-profile
+- assertVisible:
+    id: profile-screen

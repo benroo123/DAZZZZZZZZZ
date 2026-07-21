@@ -2,17 +2,24 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
+  FlatList,
   Image,
+  ImageStyle,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
+  StyleProp,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
+  ViewStyle,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   api,
   Candidate,
@@ -22,6 +29,7 @@ import {
   Profile,
   waitForPublished,
 } from './src/api';
+import { getMobileLayout, MobileLayout } from './src/layout';
 import { defaultTheme, ThemeKey, themeEntries, ThemeTokens, themes } from './src/themes';
 
 type TabKey = 'home' | 'match' | 'publish' | 'messages' | 'profile';
@@ -80,13 +88,83 @@ function Tag({ children, theme, styles }: { children: React.ReactNode; theme: Th
   );
 }
 
-function Cover({ uri, theme, styles }: { uri?: string | null; theme: ThemeTokens; styles: AppStyles }) {
+function Cover({
+  uri,
+  theme,
+  styles,
+  style,
+}: {
+  uri?: string | null;
+  theme: ThemeTokens;
+  styles: AppStyles;
+  style?: StyleProp<ImageStyle | ViewStyle>;
+}) {
   if (uri) {
-    return <Image accessibilityLabel="内容图片" source={{ uri }} resizeMode="cover" style={styles.cover as never} />;
+    return <Image accessibilityLabel="内容图片" source={{ uri }} resizeMode="cover" style={[styles.cover, style] as never} />;
   }
   return (
-    <View style={[styles.cover, styles.coverFallback]}>
+    <View style={[styles.cover, styles.coverFallback, style]}>
       <Text style={{ color: theme.brand, fontSize: 30 }}>搭</Text>
+    </View>
+  );
+}
+
+function FeedCard({ item, theme, styles }: { item: FeedItem; theme: ThemeTokens; styles: AppStyles }) {
+  return (
+    <View
+      testID={`feed-card-${item.entityType}`}
+      style={[
+        styles.feedCard,
+        { borderLeftColor: item.entityType === 'activity' ? theme.activity : theme.post },
+      ]}
+    >
+      {item.entityType === 'place' ? (
+        <View style={styles.cardContent}>
+          <Text style={styles.cardKind}>地点</Text>
+          <Text style={styles.cardTitle}>⌖ {(item as FeedItem & { name?: string }).name}</Text>
+          <Text style={styles.cardBody}>上海 · 点击查看附近活动</Text>
+        </View>
+      ) : item.entityType === 'user' ? (
+        <View style={styles.userResult}>
+          <Cover uri={item.imageUrl} theme={theme} styles={styles} style={styles.userResultImage} />
+          <View style={styles.flex}>
+            <Text style={styles.cardKind}>人员</Text>
+            <Text style={styles.cardTitle}>{item.displayName}</Text>
+            <Text style={styles.cardBody}>ID {item.publicId}</Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          <Cover uri={item.imageUrl} theme={theme} styles={styles} />
+          <View style={styles.cardContent}>
+            <View style={styles.cardMetaRow}>
+              <Text
+                style={[
+                  styles.cardKind,
+                  { color: item.entityType === 'activity' ? theme.activity : theme.post },
+                ]}
+              >
+                {item.entityType === 'activity' ? '组活动' : '发动态'}
+              </Text>
+              <Text style={styles.cardAuthor}>
+                {item.author?.displayName} {item.author?.realNameVerified ? '✓实名' : ''}
+              </Text>
+            </View>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={styles.cardBody} numberOfLines={3}>{item.body}</Text>
+            {item.entityType === 'activity' ? (
+              <>
+                <View style={styles.tagRow}>
+                  <Tag theme={theme} styles={styles}>{item.category}</Tag>
+                  <Tag theme={theme} styles={styles}>{item.distanceKm} km</Tag>
+                  <Tag theme={theme} styles={styles}>{item.participants?.approved}/{item.participants?.max} 人</Tag>
+                </View>
+                <Text style={styles.cardFoot}>⌖ {item.venueName} · {item.startsAt ? new Date(item.startsAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</Text>
+              </>
+            ) : null}
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -145,10 +223,10 @@ function HomeScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles }
     }
   }
 
-  return (
-    <View style={styles.screen} testID="home-screen">
+  const listHeader = (
+    <>
       <View style={styles.brandRow}>
-        <View>
+        <View style={styles.brandCopy}>
           <Text style={styles.eyebrow}>一起，真的去做点什么</Text>
           <Text style={styles.brandTitle}>DAZZZZZZZZZ</Text>
         </View>
@@ -156,11 +234,11 @@ function HomeScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles }
           <Text style={styles.aiBadgeText}>AI 原生</Text>
         </View>
       </View>
-
       <View style={styles.segment}>
         {(['recommended', 'city'] as const).map((entry) => (
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ selected: mode === entry }}
             testID={`feed-${entry}`}
             key={entry}
             onPress={() => setMode(entry)}
@@ -172,7 +250,6 @@ function HomeScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles }
           </Pressable>
         ))}
       </View>
-
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Text style={{ color: theme.muted }}>⌕</Text>
@@ -198,77 +275,31 @@ function HomeScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles }
           <Text style={styles.filterButtonText}>筛选</Text>
         </Pressable>
       </View>
-
       <View style={styles.legendRow}>
         <View style={[styles.legendDot, { backgroundColor: theme.activity }]} />
         <Text style={styles.legendText}>活动</Text>
         <View style={[styles.legendDot, { backgroundColor: theme.post }]} />
         <Text style={styles.legendText}>动态</Text>
-        <Text style={[styles.legendText, { marginLeft: 'auto' }]}>{items.length} 条结果</Text>
+        <Text style={[styles.legendText, styles.resultCount]}>{items.length} 条结果</Text>
       </View>
-
-      {loading ? <ActivityIndicator color={theme.brand} style={{ marginTop: 40 }} /> : null}
+      {loading ? <ActivityIndicator color={theme.brand} style={styles.listLoader} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {!loading && items.length === 0 ? <Text style={styles.empty}>没有找到，换个关键词试试。</Text> : null}
-      {items.map((item) => (
-        <View
-          key={`${item.entityType}-${item.id}`}
-          testID={`feed-card-${item.entityType}`}
-          style={[
-            styles.feedCard,
-            { borderLeftColor: item.entityType === 'activity' ? theme.activity : theme.post },
-          ]}
-        >
-          {item.entityType === 'place' ? (
-            <View style={styles.cardContent}>
-              <Text style={styles.cardKind}>地点</Text>
-              <Text style={styles.cardTitle}>⌖ {(item as FeedItem & { name?: string }).name}</Text>
-              <Text style={styles.cardBody}>上海 · 点击查看附近活动</Text>
-            </View>
-          ) : item.entityType === 'user' ? (
-            <View style={styles.userResult}>
-              <Cover uri={item.imageUrl} theme={theme} styles={styles} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardKind}>人员</Text>
-                <Text style={styles.cardTitle}>{item.displayName}</Text>
-                <Text style={styles.cardBody}>ID {item.publicId}</Text>
-              </View>
-            </View>
-          ) : (
-            <>
-              <Cover uri={item.imageUrl} theme={theme} styles={styles} />
-              <View style={styles.cardContent}>
-                <View style={styles.cardMetaRow}>
-                  <Text
-                    style={[
-                      styles.cardKind,
-                      { color: item.entityType === 'activity' ? theme.activity : theme.post },
-                    ]}
-                  >
-                    {item.entityType === 'activity' ? '组活动' : '发动态'}
-                  </Text>
-                  <Text style={styles.cardAuthor}>
-                    {item.author?.displayName} {item.author?.realNameVerified ? '✓实名' : ''}
-                  </Text>
-                </View>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardBody} numberOfLines={3}>{item.body}</Text>
-                {item.entityType === 'activity' ? (
-                  <>
-                    <View style={styles.tagRow}>
-                      <Tag theme={theme} styles={styles}>{item.category}</Tag>
-                      <Tag theme={theme} styles={styles}>{item.distanceKm} km</Tag>
-                      <Tag theme={theme} styles={styles}>{item.participants?.approved}/{item.participants?.max} 人</Tag>
-                    </View>
-                    <Text style={styles.cardFoot}>⌖ {item.venueName} · {item.startsAt ? new Date(item.startsAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</Text>
-                  </>
-                ) : null}
-              </View>
-            </>
-          )}
-        </View>
-      ))}
+    </>
+  );
 
+  return (
+    <View style={styles.flex} testID="home-screen">
+      <FlatList
+        data={items}
+        keyExtractor={(item) => `${item.entityType}-${item.id}`}
+        renderItem={({ item }) => <FeedCard item={item} theme={theme} styles={styles} />}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={!loading ? <Text style={styles.empty}>没有找到，换个关键词试试。</Text> : null}
+        contentContainerStyle={styles.screen}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      />
       <Modal
         animationType="slide"
         transparent
@@ -277,47 +308,51 @@ function HomeScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles }
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setFilterOpen(false)}>
           <Pressable testID="filter-panel" style={styles.sheet} onPress={() => undefined}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>筛选同城活动</Text>
-            <Text style={styles.fieldLabel}>活动类型</Text>
-            <View style={styles.optionWrap}>
-              {categories.map((entry) => (
-                <Pressable
-                  key={entry}
-                  onPress={() => setCategory(entry)}
-                  style={[styles.choice, category === entry && styles.choiceActive]}
-                >
-                  <Text style={[styles.choiceText, category === entry && styles.choiceTextActive]}>{entry}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.fieldLabel}>地点</Text>
-            <View style={styles.readOnlyField}><Text style={styles.inputText}>上海市 · 当前定位附近</Text></View>
-            <Text style={styles.fieldLabel}>距离</Text>
-            <View style={styles.optionWrap}>
-              {[3, 5, 10, 30].map((entry) => (
-                <Pressable key={entry} onPress={() => setDistance(entry)} style={[styles.choice, distance === entry && styles.choiceActive]}>
-                  <Text style={[styles.choiceText, distance === entry && styles.choiceTextActive]}>{entry} km</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.fieldLabel}>时间</Text>
-            <View style={styles.optionWrap}>
-              {['今天', '周末', '本周', '自定义'].map((entry) => (
-                <Pressable key={entry} onPress={() => setTime(entry)} style={[styles.choice, time === entry && styles.choiceActive]}>
-                  <Text style={[styles.choiceText, time === entry && styles.choiceTextActive]}>{entry}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.fieldLabel}>活动人数上限</Text>
-            <View style={styles.optionWrap}>
-              {[6, 12, 20, 50].map((entry) => (
-                <Pressable key={entry} onPress={() => setPeople(entry)} style={[styles.choice, people === entry && styles.choiceActive]}>
-                  <Text style={[styles.choiceText, people === entry && styles.choiceTextActive]}>{entry} 人</Text>
-                </Pressable>
-              ))}
-            </View>
-            <AppButton testID="apply-filter" onPress={() => void applyFilters()} theme={theme} styles={styles}>查看活动</AppButton>
+            <ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>筛选同城活动</Text>
+              <Text style={styles.fieldLabel}>活动类型</Text>
+              <View style={styles.optionWrap}>
+                {categories.map((entry) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: category === entry }}
+                    key={entry}
+                    onPress={() => setCategory(entry)}
+                    style={[styles.choice, category === entry && styles.choiceActive]}
+                  >
+                    <Text style={[styles.choiceText, category === entry && styles.choiceTextActive]}>{entry}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.fieldLabel}>地点</Text>
+              <View style={styles.readOnlyField}><Text style={styles.inputText}>上海市 · 当前定位附近</Text></View>
+              <Text style={styles.fieldLabel}>距离</Text>
+              <View style={styles.optionWrap}>
+                {[3, 5, 10, 30].map((entry) => (
+                  <Pressable key={entry} onPress={() => setDistance(entry)} style={[styles.choice, distance === entry && styles.choiceActive]}>
+                    <Text style={[styles.choiceText, distance === entry && styles.choiceTextActive]}>{entry} km</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.fieldLabel}>时间</Text>
+              <View style={styles.optionWrap}>
+                {['今天', '周末', '本周', '自定义'].map((entry) => (
+                  <Pressable key={entry} onPress={() => setTime(entry)} style={[styles.choice, time === entry && styles.choiceActive]}>
+                    <Text style={[styles.choiceText, time === entry && styles.choiceTextActive]}>{entry}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.fieldLabel}>活动人数上限</Text>
+              <View style={styles.optionWrap}>
+                {[6, 12, 20, 50].map((entry) => (
+                  <Pressable key={entry} onPress={() => setPeople(entry)} style={[styles.choice, people === entry && styles.choiceActive]}>
+                    <Text style={[styles.choiceText, people === entry && styles.choiceTextActive]}>{entry} 人</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <AppButton testID="apply-filter" onPress={() => void applyFilters()} theme={theme} styles={styles}>查看活动</AppButton>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -348,7 +383,11 @@ function MatchScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles 
   }
 
   return (
-    <View style={styles.screen} testID="match-screen">
+    <ScrollView
+      contentContainerStyle={styles.screen}
+      testID="match-screen"
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.titleRow}>
         <View><Text style={styles.eyebrow}>一对一发现</Text><Text style={styles.pageTitle}>找搭子</Text></View>
         <View style={styles.safetyPill}><Text style={styles.safetyText}>安全偏好已开启</Text></View>
@@ -376,7 +415,7 @@ function MatchScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyles 
         <Pressable accessibilityLabel="喜欢" testID="swipe-like" onPress={() => void decide('like')} style={[styles.circleAction, { backgroundColor: theme.brand, borderColor: theme.brand }]}><Text style={[styles.circleIcon, { color: theme.dark ? theme.background : '#FFFFFF' }]}>♥</Text></Pressable>
       </View>
       <Text style={styles.helper}>不是相亲：匹配的是兴趣、安全偏好与想参加的活动。</Text>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -444,7 +483,18 @@ function PublishScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyle
   }
 
   return (
-    <View style={styles.screen} testID="publish-screen">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={8}
+      style={styles.flex}
+    >
+      <ScrollView
+        contentContainerStyle={styles.screen}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        testID="publish-screen"
+      >
       <Text style={styles.eyebrow}>把操作交给 AI</Text>
       <Text style={styles.pageTitle}>说一句，就能组局</Text>
       <View style={styles.segment}>
@@ -475,7 +525,7 @@ function PublishScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyle
         <>
           <View style={styles.inlineFields}>
             <View style={{ flex: 1 }}><Text style={styles.fieldLabel}>类型</Text><TextInput accessibilityLabel="活动类型" value={category} onChangeText={setCategory} style={styles.input} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.fieldLabel}>人数 2–50</Text><View style={styles.stepper}><Pressable onPress={() => setMaxPeople((value) => Math.max(2, value - 1))}><Text style={styles.stepperControl}>−</Text></Pressable><Text style={styles.stepperValue}>{maxPeople}</Text><Pressable onPress={() => setMaxPeople((value) => Math.min(50, value + 1))}><Text style={styles.stepperControl}>＋</Text></Pressable></View></View>
+            <View style={{ flex: 1 }}><Text style={styles.fieldLabel}>人数 2–50</Text><View style={styles.stepper}><Pressable accessibilityLabel="减少人数" hitSlop={8} onPress={() => setMaxPeople((value) => Math.max(2, value - 1))} style={styles.stepperButton}><Text style={styles.stepperControl}>−</Text></Pressable><Text style={styles.stepperValue}>{maxPeople}</Text><Pressable accessibilityLabel="增加人数" hitSlop={8} onPress={() => setMaxPeople((value) => Math.min(50, value + 1))} style={styles.stepperButton}><Text style={styles.stepperControl}>＋</Text></Pressable></View></View>
           </View>
           <Text style={styles.fieldLabel}>最低成团人数</Text>
           <View style={styles.optionWrap}>{[2, 3, 4, 6].map((value) => <Pressable key={value} onPress={() => setMinPeople(Math.min(value, maxPeople))} style={[styles.choice, minPeople === value && styles.choiceActive]}><Text style={[styles.choiceText, minPeople === value && styles.choiceTextActive]}>{value} 人</Text></Pressable>)}</View>
@@ -497,7 +547,8 @@ function PublishScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyle
       {status ? <Text testID="publish-status" style={styles.status}>{status}</Text> : null}
       <AppButton testID="publish-submit" disabled={busy} onPress={() => void publish()} theme={theme} styles={styles}>{busy ? '处理中…' : kind === 'activity' ? '确认并发布活动' : '确认并发布动态'}</AppButton>
       <Text style={styles.helper}>所有 AI 生成内容都保留来源记录，发布前由你确认。</Text>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -514,6 +565,15 @@ function MessagesScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyl
   useEffect(() => {
     api.conversations().then((result) => { setConversations(result.items); setSocial(result.social); }).catch((error) => setStatus(error.message));
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !active) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setActive(null);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [active]);
 
   async function openConversation(conversation: Conversation) {
     setBlocked(false);
@@ -555,29 +615,43 @@ function MessagesScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyl
 
   if (active) {
     return (
-      <View style={styles.screen} testID="chat-screen">
-        <View style={styles.chatHeader}>
-          <Pressable accessibilityLabel="返回消息" onPress={() => setActive(null)}><Text style={styles.back}>‹</Text></Pressable>
-          <View style={{ flex: 1 }}><Text style={styles.chatTitle}>{active.title}</Text><Text style={styles.chatSubtitle}>{blocked ? '静默拉黑 · 对方不会收到提示' : '已通过平台安全检查'}</Text></View>
-          {active.peerUserId ? <Pressable key={blocked ? 'unblock' : 'block'} accessibilityRole="button" accessibilityLabel={blocked ? '解除拉黑' : '静默拉黑'} testID="silent-block" disabled={blocking} onPress={() => void toggleBlock()}><Text style={[styles.blockText, blocked && { color: theme.accent }]}>{blocking ? '处理中' : blocked ? '解除' : '拉黑'}</Text></Pressable> : null}
-        </View>
-        <View style={styles.notice}><Text style={styles.noticeText}>不要提前转账；精确集合位置仅向已加入成员开放。</Text></View>
-        <View style={{ minHeight: 380 }}>
-          {messages.map((message) => {
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={8}
+        style={styles.flex}
+        testID="chat-screen"
+      >
+        <View style={[styles.screen, styles.chatScreen]}>
+          <View style={styles.chatHeader}>
+            <Pressable accessibilityLabel="返回消息" accessibilityRole="button" hitSlop={8} onPress={() => setActive(null)} style={styles.headerAction}><Text style={styles.back}>‹</Text></Pressable>
+            <View style={styles.flex}><Text style={styles.chatTitle}>{active.title}</Text><Text style={styles.chatSubtitle}>{blocked ? '静默拉黑 · 对方不会收到提示' : '已通过平台安全检查'}</Text></View>
+            {active.peerUserId ? <Pressable key={blocked ? 'unblock' : 'block'} accessibilityRole="button" accessibilityLabel={blocked ? '解除拉黑' : '静默拉黑'} testID="silent-block" disabled={blocking} onPress={() => void toggleBlock()} style={styles.headerAction}><Text style={[styles.blockText, blocked && { color: theme.accent }]}>{blocking ? '处理中' : blocked ? '解除' : '拉黑'}</Text></Pressable> : null}
+          </View>
+          <View style={styles.notice}><Text style={styles.noticeText}>不要提前转账；精确集合位置仅向已加入成员开放。</Text></View>
+          <FlatList
+            data={messages}
+            keyExtractor={(message) => message.id}
+            renderItem={({ item: message }) => {
             const mine = message.senderId === '11111111-1111-4111-8111-111111111111';
-            return <View key={message.id} style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}><Text style={[styles.bubbleText, mine && styles.bubbleMineText]}>{message.text}</Text></View>;
-          })}
+              return <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}><Text style={[styles.bubbleText, mine && styles.bubbleMineText]}>{message.text}</Text></View>;
+            }}
+            contentContainerStyle={styles.messageList}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={styles.flex}
+          />
+          <View style={styles.composer}>
+            <TextInput accessibilityLabel="输入消息" value={draft} onChangeText={setDraft} editable={!blocked} placeholder={blocked ? '已静默拉黑' : '输入消息…'} placeholderTextColor={theme.muted} returnKeyType="send" onSubmitEditing={() => void send()} style={styles.composerInput} />
+            <Pressable accessibilityLabel="发送消息" accessibilityRole="button" disabled={blocked} onPress={() => void send()} style={[styles.send, blocked && { opacity: 0.45 }]}><Text style={styles.sendText}>发送</Text></Pressable>
+          </View>
         </View>
-        <View style={styles.composer}>
-          <TextInput accessibilityLabel="输入消息" value={draft} onChangeText={setDraft} editable={!blocked} placeholder={blocked ? '已静默拉黑' : '输入消息…'} placeholderTextColor={theme.muted} style={styles.composerInput} />
-          <Pressable accessibilityLabel="发送消息" disabled={blocked} onPress={() => void send()} style={[styles.send, blocked && { opacity: 0.45 }]}><Text style={styles.sendText}>发送</Text></Pressable>
-        </View>
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 
-  return (
-    <View style={styles.screen} testID="messages-screen">
+  const conversationHeader = (
+    <>
       <Text style={styles.eyebrow}>关系与沟通</Text>
       <Text style={styles.pageTitle}>消息</Text>
       <View style={styles.socialCard}>
@@ -588,14 +662,25 @@ function MessagesScreen({ theme, styles }: { theme: ThemeTokens; styles: AppStyl
         <View style={styles.socialStat}><Text style={styles.socialNumber}>0</Text><Text style={styles.socialLabel}>新的关注</Text></View>
       </View>
       <Text style={styles.sectionTitle}>群组与私信</Text>
-      {conversations.map((conversation) => (
-        <Pressable testID="conversation-row" key={conversation.id} onPress={() => void openConversation(conversation)} style={styles.conversation}>
+    </>
+  );
+
+  return (
+    <FlatList
+      contentContainerStyle={styles.screen}
+      data={conversations}
+      keyExtractor={(conversation) => conversation.id}
+      ListHeaderComponent={conversationHeader}
+      ListFooterComponent={status ? <Text style={styles.error}>{status}</Text> : null}
+      renderItem={({ item: conversation }) => (
+        <Pressable accessibilityLabel={`打开${conversation.type === 'direct' ? '私信' : '群聊'}：${conversation.title}`} accessibilityRole="button" testID="conversation-row" onPress={() => void openConversation(conversation)} style={styles.conversation}>
           <View style={[styles.avatar, { backgroundColor: conversation.type === 'direct' ? theme.brand : theme.post }]}><Text style={styles.avatarText}>{conversation.type === 'direct' ? '人' : '组'}</Text></View>
-          <View style={{ flex: 1 }}><View style={styles.conversationTop}><Text style={styles.conversationTitle}>{conversation.title}</Text><Text style={styles.conversationTime}>{conversation.lastMessageAt ? new Date(conversation.lastMessageAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : ''}</Text></View><Text numberOfLines={1} style={styles.conversationPreview}>{conversation.lastMessage || '打开对话'}</Text></View>
+          <View style={styles.flex}><View style={styles.conversationTop}><Text style={styles.conversationTitle}>{conversation.title}</Text><Text style={styles.conversationTime}>{conversation.lastMessageAt ? new Date(conversation.lastMessageAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : ''}</Text></View><Text numberOfLines={1} style={styles.conversationPreview}>{conversation.lastMessage || '打开对话'}</Text></View>
         </Pressable>
-      ))}
-      {status ? <Text style={styles.error}>{status}</Text> : null}
-    </View>
+      )}
+      showsVerticalScrollIndicator={false}
+      testID="messages-screen"
+    />
   );
 }
 
@@ -632,7 +717,18 @@ function ProfileScreen({
   }
 
   return (
-    <View style={styles.screen} testID="profile-screen">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={8}
+      style={styles.flex}
+    >
+      <ScrollView
+        contentContainerStyle={styles.screen}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        testID="profile-screen"
+      >
       <View style={styles.profileHero}>
         <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>{profile?.displayName?.slice(0, 1) ?? '我'}</Text><View style={styles.cameraDot}><Text style={styles.cameraDotText}>＋</Text></View></View>
         <View style={{ flex: 1 }}>
@@ -665,39 +761,47 @@ function ProfileScreen({
         ))}
       </View>
       {status ? <Text style={styles.status}>{status}</Text> : null}
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-export default function App() {
+function AppContent() {
   const [tab, setTab] = useState<TabKey>('home');
   const [themeKey, setThemeKey] = useState<ThemeKey>(defaultTheme);
+  const { width, height, fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const theme = themes[themeKey];
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const layout = useMemo(() => getMobileLayout(width, height, fontScale), [fontScale, height, width]);
+  const styles = useMemo(() => createStyles(theme, layout), [layout, theme]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || tab === 'home') return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setTab('home');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [tab]);
 
   return (
-    <SafeAreaView style={styles.appRoot}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.appRoot}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       <View style={styles.phoneShell}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.screenHost}>
           {tab === 'home' ? <HomeScreen theme={theme} styles={styles} /> : null}
           {tab === 'match' ? <MatchScreen theme={theme} styles={styles} /> : null}
           {tab === 'publish' ? <PublishScreen theme={theme} styles={styles} /> : null}
           {tab === 'messages' ? <MessagesScreen theme={theme} styles={styles} /> : null}
           {tab === 'profile' ? <ProfileScreen theme={theme} styles={styles} themeKey={themeKey} onTheme={setThemeKey} /> : null}
-        </ScrollView>
-        <View style={styles.tabBar}>
+        </View>
+        <View style={[styles.tabBar, { minHeight: 58 + Math.max(insets.bottom, 4), paddingBottom: Math.max(insets.bottom, 4) }]}>
           {tabs.map((entry) => {
             const active = tab === entry.key;
             return (
-              <Pressable accessibilityRole="tab" accessibilityLabel={entry.label} testID={`tab-${entry.key}`} key={entry.key} onPress={() => setTab(entry.key)} style={styles.tab}>
+              <Pressable accessibilityRole="tab" accessibilityLabel={entry.label} accessibilityState={{ selected: active }} testID={`tab-${entry.key}`} key={entry.key} onPress={() => setTab(entry.key)} style={styles.tab}>
                 <Text style={[styles.tabIcon, active && styles.tabActive]}>{entry.icon}</Text>
-                <Text style={[styles.tabLabel, active && styles.tabActive]}>{entry.label}</Text>
+                <Text numberOfLines={1} style={[styles.tabLabel, active && styles.tabActive]}>{entry.label}</Text>
                 {active ? <View style={styles.tabIndicator} /> : null}
               </Pressable>
             );
@@ -708,59 +812,72 @@ export default function App() {
   );
 }
 
-function createStyles(theme: ThemeTokens) {
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function createStyles(theme: ThemeTokens, layout: MobileLayout) {
   const radius = theme.cardRadius;
   return StyleSheet.create({
+    flex: { flex: 1 },
     appRoot: { flex: 1, backgroundColor: Platform.OS === 'web' ? (theme.dark ? '#030405' : '#DDE3EA') : theme.background },
-    phoneShell: { flex: 1, width: '100%', maxWidth: 480, alignSelf: 'center', backgroundColor: theme.background, ...(Platform.OS === 'web' ? { boxShadow: '0 0 55px rgba(0,0,0,.16)' } as never : {}) },
-    scroll: { flex: 1 },
-    scrollContent: { paddingBottom: 104 },
-    screen: { paddingHorizontal: 18, paddingTop: Platform.OS === 'ios' ? 12 : 24, minHeight: 690 },
+    phoneShell: { flex: 1, width: '100%', alignSelf: 'center', backgroundColor: theme.background, ...(Platform.OS === 'web' ? { maxWidth: 480, boxShadow: '0 0 55px rgba(0,0,0,.16)' } as never : {}) },
+    screenHost: { flex: 1, minHeight: 0 },
+    screen: { flexGrow: 1, paddingHorizontal: layout.horizontalPadding, paddingTop: layout.verticalPadding, paddingBottom: 24 },
     eyebrow: { color: theme.muted, fontSize: 12, fontWeight: '700', letterSpacing: 1.2, marginBottom: 3 },
-    brandTitle: { color: theme.text, fontSize: 34, lineHeight: 40, fontWeight: '900', letterSpacing: -1.5 },
-    pageTitle: { color: theme.text, fontSize: 28, lineHeight: 35, fontWeight: '900', letterSpacing: -1 },
-    brandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 17 },
+    brandTitle: { color: theme.text, fontSize: layout.compact ? 28 : 34, lineHeight: layout.compact ? 34 : 40, fontWeight: '900', letterSpacing: -1.5 },
+    pageTitle: { color: theme.text, fontSize: layout.compact ? 25 : 28, lineHeight: layout.compact ? 32 : 35, fontWeight: '900', letterSpacing: -1 },
+    brandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 17 },
+    brandCopy: { flex: 1, minWidth: 0 },
     aiBadge: { backgroundColor: theme.brandSoft, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: theme.border },
     aiBadgeText: { color: theme.brand, fontWeight: '800', fontSize: 12 },
-    titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-    safetyPill: { borderColor: theme.border, borderWidth: 1, borderRadius: 99, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: theme.surface },
+    titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, justifyContent: 'space-between', marginBottom: 18 },
+    safetyPill: { flexShrink: 1, borderColor: theme.border, borderWidth: 1, borderRadius: 99, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: theme.surface },
     safetyText: { color: theme.muted, fontSize: 10, fontWeight: '700' },
     segment: { flexDirection: 'row', backgroundColor: theme.brandSoft, borderRadius: Math.max(5, radius), padding: 4, marginBottom: 14 },
-    segmentButton: { flex: 1, paddingVertical: 10, borderRadius: Math.max(3, radius - 4), alignItems: 'center' },
+    segmentButton: { flex: 1, minHeight: 44, paddingVertical: 10, borderRadius: Math.max(3, radius - 4), alignItems: 'center', justifyContent: 'center' },
     segmentButtonActive: { backgroundColor: theme.surface, borderWidth: theme.cardRadius < 6 ? 1 : 0, borderColor: theme.text, ...(Platform.OS === 'web' ? { boxShadow: '0 2px 10px rgba(0,0,0,.08)' } as never : { elevation: 2 }) },
     segmentText: { color: theme.muted, fontWeight: '700', fontSize: 13 },
     segmentTextActive: { color: theme.text },
     searchRow: { flexDirection: 'row', gap: 9, marginBottom: 12 },
-    searchBox: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', minHeight: 46, paddingHorizontal: 14, backgroundColor: theme.surface, borderRadius: Math.max(5, radius), borderColor: theme.border, borderWidth: 1 },
+    searchBox: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', minHeight: 48, paddingHorizontal: layout.compact ? 10 : 14, backgroundColor: theme.surface, borderRadius: Math.max(5, radius), borderColor: theme.border, borderWidth: 1 },
     searchInput: { flex: 1, color: theme.text, paddingVertical: 10, fontSize: 13, outlineStyle: 'none' } as never,
-    filterButton: { paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brand, borderRadius: Math.max(5, radius) },
+    filterButton: { minHeight: 48, minWidth: 48, paddingHorizontal: layout.compact ? 10 : 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brand, borderRadius: Math.max(5, radius) },
     filterButtonText: { color: theme.dark && theme.brand === '#8EE8FF' ? theme.background : '#FFFFFF', fontSize: 12, fontWeight: '800' },
     legendRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
     legendDot: { height: 7, width: 7, borderRadius: 99 },
     legendText: { color: theme.muted, fontSize: 11 },
+    resultCount: { marginLeft: 'auto' },
+    listLoader: { marginVertical: 40 },
     feedCard: { overflow: 'hidden', backgroundColor: theme.surface, borderRadius: radius, marginBottom: 14, borderColor: theme.border, borderWidth: 1, borderLeftWidth: 5 },
-    cover: { width: '100%', height: 174, backgroundColor: theme.brandSoft },
+    cover: { width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.brandSoft },
     coverFallback: { alignItems: 'center', justifyContent: 'center' },
     cardContent: { padding: 14 },
-    cardMetaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    cardMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', marginBottom: 8 },
     cardKind: { color: theme.brand, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
     cardAuthor: { color: theme.muted, fontSize: 11 },
     cardTitle: { color: theme.text, fontSize: 18, fontWeight: '800', marginBottom: 6 },
     cardBody: { color: theme.muted, fontSize: 13, lineHeight: 19 },
     cardFoot: { color: theme.muted, fontSize: 11, marginTop: 10 },
     userResult: { flexDirection: 'row', gap: 12, padding: 12, alignItems: 'center' },
+    userResultImage: { width: 64, height: 64, aspectRatio: undefined, borderRadius: 18 },
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },
     tag: { borderRadius: 99, paddingVertical: 5, paddingHorizontal: 9, backgroundColor: theme.brandSoft, borderWidth: 1, borderColor: theme.border },
     tagText: { color: theme.text, fontSize: 10, fontWeight: '600' },
     error: { color: '#E54747', backgroundColor: theme.surface, padding: 12, borderRadius: 10, marginVertical: 10 },
     empty: { color: theme.muted, textAlign: 'center', marginTop: 60 },
     modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,.52)', justifyContent: 'flex-end' },
-    sheet: { width: '100%', maxWidth: 480, alignSelf: 'center', backgroundColor: theme.surface, padding: 18, paddingBottom: 30, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%' },
+    sheet: { width: '100%', maxWidth: 480, alignSelf: 'center', overflow: 'hidden', backgroundColor: theme.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%' },
+    sheetContent: { paddingHorizontal: layout.horizontalPadding, paddingTop: 14, paddingBottom: 34 },
     sheetHandle: { backgroundColor: theme.border, width: 42, height: 4, borderRadius: 9, alignSelf: 'center', marginBottom: 14 },
     sheetTitle: { color: theme.text, fontWeight: '900', fontSize: 21, marginBottom: 4 },
     fieldLabel: { color: theme.text, fontSize: 12, fontWeight: '800', marginTop: 13, marginBottom: 7 },
     optionWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-    choice: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Math.max(4, radius), backgroundColor: theme.background, borderWidth: 1, borderColor: theme.border },
+    choice: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', borderRadius: Math.max(4, radius), backgroundColor: theme.background, borderWidth: 1, borderColor: theme.border },
     choiceActive: { backgroundColor: theme.brand, borderColor: theme.brand },
     choiceText: { color: theme.muted, fontSize: 11, fontWeight: '700' },
     choiceTextActive: { color: theme.dark && theme.brand === '#8EE8FF' ? theme.background : '#FFFFFF' },
@@ -770,7 +887,7 @@ function createStyles(theme: ThemeTokens) {
     buttonSecondary: { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.brand },
     buttonText: { color: theme.dark && theme.brand === '#8EE8FF' ? theme.background : '#FFFFFF', fontWeight: '800', fontSize: 14 },
     matchCard: { overflow: 'hidden', borderRadius: Math.max(8, radius), backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border },
-    matchImage: { width: '100%', height: 410, backgroundColor: theme.brandSoft },
+    matchImage: { width: '100%', height: undefined, aspectRatio: layout.matchImageAspectRatio, backgroundColor: theme.brandSoft },
     matchGradient: { padding: 17, backgroundColor: theme.surface },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
     matchName: { color: theme.text, fontSize: 25, fontWeight: '900' },
@@ -786,8 +903,9 @@ function createStyles(theme: ThemeTokens) {
     input: { minHeight: 44, color: theme.text, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, borderRadius: Math.max(5, radius), paddingHorizontal: 12, outlineStyle: 'none' } as never,
     textArea: { minHeight: 112, textAlignVertical: 'top', color: theme.text, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, borderRadius: Math.max(5, radius), padding: 12, lineHeight: 20, outlineStyle: 'none' } as never,
     textAreaSmall: { minHeight: 80, textAlignVertical: 'top', color: theme.text, backgroundColor: theme.background, borderWidth: 1, borderColor: theme.border, borderRadius: Math.max(5, radius), padding: 12 },
-    inlineFields: { flexDirection: 'row', gap: 10 },
+    inlineFields: { flexDirection: layout.compact ? 'column' : 'row', gap: layout.compact ? 0 : 10 },
     stepper: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 44, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.border, borderRadius: Math.max(5, radius), backgroundColor: theme.surface },
+    stepperButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
     stepperControl: { color: theme.brand, fontSize: 21, fontWeight: '700' },
     stepperValue: { color: theme.text, fontSize: 14, fontWeight: '800' },
     aiMediaCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 11, marginTop: 14, borderRadius: Math.max(5, radius), backgroundColor: theme.brandSoft, borderColor: theme.border, borderWidth: 1 },
@@ -799,7 +917,9 @@ function createStyles(theme: ThemeTokens) {
     planTitle: { color: theme.brand, fontSize: 13, fontWeight: '900', marginBottom: 8 },
     planLine: { color: theme.text, fontSize: 11, marginBottom: 5 },
     planSafety: { color: theme.muted, fontSize: 10, lineHeight: 15, marginTop: 6 },
-    chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+    chatScreen: { flex: 1 },
+    chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    headerAction: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
     back: { color: theme.text, fontSize: 38, lineHeight: 40 },
     chatTitle: { color: theme.text, fontSize: 18, fontWeight: '900' },
     chatSubtitle: { color: theme.muted, fontSize: 9, marginTop: 2 },
@@ -811,9 +931,10 @@ function createStyles(theme: ThemeTokens) {
     bubbleOther: { alignSelf: 'flex-start', backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, borderBottomLeftRadius: 4 },
     bubbleText: { color: theme.text, fontSize: 13, lineHeight: 18 },
     bubbleMineText: { color: theme.dark && theme.brand === '#8EE8FF' ? theme.background : '#FFFFFF' },
-    composer: { flexDirection: 'row', gap: 8, alignItems: 'center', borderTopWidth: 1, borderColor: theme.border, paddingTop: 12 },
-    composerInput: { flex: 1, color: theme.text, backgroundColor: theme.surface, borderRadius: 99, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, paddingVertical: 10, outlineStyle: 'none' } as never,
-    send: { backgroundColor: theme.brand, borderRadius: 99, paddingHorizontal: 15, paddingVertical: 11 },
+    messageList: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 4 },
+    composer: { flexDirection: 'row', gap: 8, alignItems: 'center', borderTopWidth: 1, borderColor: theme.border, paddingTop: 10 },
+    composerInput: { flex: 1, minHeight: 44, color: theme.text, backgroundColor: theme.surface, borderRadius: 99, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, paddingVertical: 10, outlineStyle: 'none' } as never,
+    send: { minWidth: 52, minHeight: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brand, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 10 },
     sendText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
     socialCard: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', backgroundColor: theme.surface, borderRadius: Math.max(5, radius), borderColor: theme.border, borderWidth: 1, paddingVertical: 16, marginTop: 15, marginBottom: 22 },
     socialStat: { alignItems: 'center', flex: 1 },
@@ -846,12 +967,12 @@ function createStyles(theme: ThemeTokens) {
     photoSetup: { borderWidth: 1, borderStyle: 'dashed', borderColor: theme.brand, borderRadius: Math.max(5, radius), padding: 18, alignItems: 'center' },
     photoSetupText: { color: theme.brand, fontSize: 11, fontWeight: '700' },
     themeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-    themeTile: { width: '48%', minHeight: 76, borderWidth: 1, borderRadius: 10, padding: 9, justifyContent: 'space-between' },
+    themeTile: { width: layout.themeColumns === 1 ? '100%' : '48%', minHeight: 76, borderWidth: 1, borderRadius: 10, padding: 9, justifyContent: 'space-between' },
     themeTileActive: { borderWidth: 3 },
     swatches: { flexDirection: 'row', gap: 4 },
     swatch: { width: 19, height: 9, borderRadius: 3 },
-    tabBar: { height: 78, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderTopColor: theme.border, borderTopWidth: 1, paddingBottom: Platform.OS === 'ios' ? 10 : 4, ...(Platform.OS === 'web' ? { boxShadow: '0 -8px 24px rgba(0,0,0,.06)' } as never : {}) },
-    tab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' },
+    tabBar: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: theme.surface, borderTopColor: theme.border, borderTopWidth: 1, ...(Platform.OS === 'web' ? { boxShadow: '0 -8px 24px rgba(0,0,0,.06)' } as never : {}) },
+    tab: { flex: 1, minWidth: 44, height: 58, alignItems: 'center', justifyContent: 'center' },
     tabIcon: { color: theme.muted, fontSize: 22, lineHeight: 24 },
     tabLabel: { color: theme.muted, fontSize: 9, marginTop: 4, fontWeight: '600' },
     tabActive: { color: theme.brand, fontWeight: '900' },
